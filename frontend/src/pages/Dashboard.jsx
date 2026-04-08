@@ -1,23 +1,12 @@
-function Dashboard({ setActivePage, attempts }) {
-  const totalAttempts = attempts.length;
+import { useState } from "react";
+import CalendarCard from "../components/CalendarCard";
 
-  const successfulRuns = attempts.filter(
-    (attempt) => attempt.status === "Success"
-  ).length;
-
-  const errorsFixed = attempts.filter(
-    (attempt) =>
-      attempt.status === "CompilationError" ||
-      attempt.status === "RuntimeError"
-  ).length;
-
-  let currentFocus = "Java Basics";
-
-  if (errorsFixed > successfulRuns) {
-    currentFocus = "Debugging Practice";
-  } else if (successfulRuns > 0) {
-    currentFocus = "Code Execution";
-  }
+function Dashboard({ setActivePage, setSelectedQuestion, attempts }) {
+  const [loggedInDates] = useState([
+    "2026-04-07",
+    "2026-04-08",
+    "2026-04-15",
+  ]);
 
   return (
     <section className="page">
@@ -26,41 +15,53 @@ function Dashboard({ setActivePage, attempts }) {
         <p>Your coding journey at a glance.</p>
       </div>
 
-      <div className="card-grid">
-        <div className="card stat-card">
-          <h3>Total Attempts</h3>
-          <p>{totalAttempts}</p>
+      <div className="dashboard-top-section">
+        <div className="dashboard-top-left">
+          <div className="card daily-challenge-card">
+            <p className="card-label">🔥 Daily Challenge</p>
+            <h3>Two Sum</h3>
+            <p className="challenge-desc">
+              Find two indices such that their values add up to the target.
+            </p>
+            <button
+              className="primary-btn"
+              onClick={() => {
+                setSelectedQuestion("Two Sum");
+                setActivePage("Practice");
+              }}
+            >
+              Solve Now
+            </button>
+          </div>
+
+          <div className="card streak-card">
+            <p className="card-label">📈 Coding Streak</p>
+            <h3>---</h3>
+            <p className="streak-subtext">Best Streak: 7 Days</p>
+            <div className="motivation-box">
+              <p>Keep the momentum going! Every day counts.</p>
+            </div>
+          </div>
         </div>
 
-        <div className="card stat-card">
-          <h3>Successful Runs</h3>
-          <p>{successfulRuns}</p>
-        </div>
+        <CalendarCard loggedInDates={loggedInDates} />
+      </div>
 
-        <div className="card stat-card">
-          <h3>Errors Fixed</h3>
-          <p>{errorsFixed}</p>
-        </div>
+      <div className="question-section">
+        <h2>Problems</h2>
 
-        <div className="card stat-card">
-          <h3>Current Focus</h3>
-          <p>{currentFocus}</p>
+        <div className="question-list">
+          <button
+            className="question-item solved question-button"
+            onClick={() => setActivePage("Practice")}
+          >
+            <span className="question-id">1.</span>
+            <span className="question-title">Two Sum</span>
+            <span className="question-difficulty easy">Easy</span>
+          </button>
         </div>
       </div>
 
-      <div className="card hero-card">
-        <h3>Start Practicing</h3>
-        <p>
-          Write Java code, run it, and get beginner-friendly explanations for
-          errors.
-        </p>
-        <button
-          className="primary-btn"
-          onClick={() => setActivePage("Practice")}
-        >
-          Go to Practice
-        </button>
-      </div>
     </section>
   );
 }

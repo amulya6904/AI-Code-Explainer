@@ -1,9 +1,10 @@
 import { useState } from "react";
 import CodeEditor from "../components/editor/CodeEditor";
-import ActionBar from "../components/editor/ActionBar";
-import StatusCard from "../components/panels/StatusCard";
+import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/panels/OutputPanel";
 import HintPanel from "../components/panels/HintPanel";
+import ProblemGuidance from "../components/ProblemGuidance";
+import { problems } from "../data/problems";
 import { starterCode } from "../data/starterCode";
 import { submitCode } from "../api/client";
 
@@ -26,28 +27,33 @@ function Practice({ attempts, setAttempts }) {
 
       console.log("Backend response:", res);
 
-    const payload = res?.data || res || {};
-    const exec = payload?.execution_result || payload?.execution || payload || {};
+      const payload = res?.data ?? res ?? {};
+      const exec =
+        payload?.execution ??
+        payload?.execution_result ??
+        payload ??
+        {};
 
       const finalStatus =
-        payload?.status || exec?.status || (res?.success ? "Success" : "Error");
+        exec?.status ||
+        payload?.status ||
+        (res?.success ? "Success" : "Error");
 
       const finalOutput =
-        payload?.output ||
-        exec?.output ||
-        payload?.error_message ||
-        exec?.error_message ||
-        payload?.stderr ||
-        exec?.stderr ||
+        exec?.output ??
+        payload?.output ??
+        exec?.error_message ??
+        payload?.error_message ??
+        exec?.stderr ??
+        payload?.stderr ??
         "No output returned.";
 
-      const finalHint = payload?.hint || exec?.hint || "";
+      const finalHint = payload?.hint ?? exec?.hint ?? "";
 
       setStatus(finalStatus);
       setOutput(finalOutput);
       setHint(finalHint);
 
-      // Save attempt
       const newAttempt = {
         id: Date.now(),
         code: code,
@@ -74,23 +80,22 @@ function Practice({ attempts, setAttempts }) {
   };
 
   return (
-    <section className="page">
-      <div className="page-header">
-        <h2>Practice Workspace</h2>
-        <p>Write code, run it, and learn with AI guidance.</p>
-      </div>
-
-      <div className="practice-layout">
-        <div className="card practice-editor">
-          <h3>Code Editor</h3>
-          <CodeEditor code={code} setCode={setCode} />
-          <ActionBar onRun={handleRun} onReset={handleReset} />
+    <section className="workspace-page">
+      <div className="workspace-layout">
+        <div className="workspace-left card">
+          <ProblemGuidance problem={problems[0]} />
         </div>
 
-        <div className="practice-right">
-          <StatusCard status={status} />
-          <OutputPanel output={output} />
-          <HintPanel hint={hint} />
+        <div className="workspace-right">
+          <div className="card practice-editor">
+            <EditorToolbar onRun={handleRun} onReset={handleReset} />
+            <CodeEditor code={code} setCode={setCode} />
+          </div>
+
+          <div className="workspace-feedback">
+            <OutputPanel output={output} status={status} />
+            <HintPanel hint={hint} status={status} />
+          </div>
         </div>
       </div>
     </section>

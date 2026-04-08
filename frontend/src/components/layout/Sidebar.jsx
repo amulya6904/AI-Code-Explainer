@@ -1,4 +1,4 @@
-const menuItems = ["Dashboard", "Practice", "History", "Progress"];
+const menuItems = ["Dashboard", "Practice", "Progress"];
 
 function Sidebar({ activePage, setActivePage }) {
   return (
