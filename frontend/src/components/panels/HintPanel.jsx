@@ -66,7 +66,7 @@ function HintPanel({ hints, status, onClose }) {
               ))}
             </div>
 
-            {hints.learning_tip && hintLevel === MAX_HINT_LEVEL && (
+            {hints.learning_tip && (
               <div className="hint-section hint-tip">
                 <strong>Learning tip:</strong> {hints.learning_tip}
               </div>
