@@ -15,6 +15,7 @@ function Practice({ attempts, setAttempts }) {
   const [hints, setHints] = useState(null);
   const [errorLine, setErrorLine] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showHintModal, setShowHintModal] = useState(false);
 
   const handleRun = async () => {
     try {
@@ -43,14 +44,15 @@ function Practice({ attempts, setAttempts }) {
         payload?.status ||
         (res?.success ? "Success" : "Error");
 
-      const finalOutput =
-        exec?.output ??
-        payload?.output ??
-        exec?.error_message ??
-        payload?.error_message ??
-        exec?.stderr ??
-        payload?.stderr ??
-        "No output returned.";
+      const execOutput = exec?.output ?? payload?.output ?? null;
+      const execError = exec?.error_message ?? payload?.error_message ?? exec?.stderr ?? payload?.stderr ?? null;
+
+      let finalOutput;
+      if (execOutput && execError) {
+        finalOutput = execOutput + "\n\n" + execError;
+      } else {
+        finalOutput = execOutput || execError || "No output returned.";
+      }
 
       const finalHints = payload?.hints ?? null;
       const finalErrorLine = exec?.line_number ?? null;
@@ -100,14 +102,23 @@ function Practice({ attempts, setAttempts }) {
 
         <div className="workspace-right">
           <div className="card practice-editor">
-            <EditorToolbar onRun={handleRun} onReset={handleReset} isRunning={status === "Running..."} />
+            <EditorToolbar
+              onRun={handleRun}
+              onReset={handleReset}
+              isRunning={status === "Running..."}
+              onHint={() => setShowHintModal(true)}
+              hasHints={!!hints}
+            />
             <CodeEditor code={code} setCode={setCode} errorLine={errorLine} errorMessage={errorMessage} readOnly={status === "Running..."} />
           </div>
 
           <div className="workspace-feedback">
             <OutputPanel output={output} status={status} errorLine={errorLine} />
-            <HintPanel hints={hints} status={status} />
           </div>
+
+          {showHintModal && (
+            <HintPanel hints={hints} status={status} onClose={() => setShowHintModal(false)} />
+          )}
         </div>
       </div>
     </section>

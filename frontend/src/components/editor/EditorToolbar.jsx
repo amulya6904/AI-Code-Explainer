@@ -1,4 +1,4 @@
-function EditorToolbar({ onRun, onReset, isRunning }) {
+function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
   return (
     <div className="editor-toolbar">
       <div className="editor-toolbar-left">
@@ -10,6 +10,12 @@ function EditorToolbar({ onRun, onReset, isRunning }) {
       </div>
 
       <div className="editor-toolbar-right">
+        {hasHints && (
+          <button className="toolbar-btn toolbar-hint" onClick={onHint} disabled={isRunning}>
+            Hint
+          </button>
+        )}
+
         <button className="toolbar-btn toolbar-reset" onClick={onReset} disabled={isRunning}>
           Reset
         </button>
