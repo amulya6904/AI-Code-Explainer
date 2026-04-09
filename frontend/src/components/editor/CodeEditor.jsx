@@ -5,7 +5,7 @@ function CodeEditor({ code, setCode }) {
     <Editor
       height="320px"
       defaultLanguage="java"
-      theme="vs-dark"
+      theme="vs"
       value={code}
       onChange={(value) => setCode(value)}
       options={{

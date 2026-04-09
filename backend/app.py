@@ -37,6 +37,7 @@ import logging
 import os
 
 from flask import Flask
+from flask_cors import CORS
 
 from response import ErrorCode, fail
 from routes import api_bp
@@ -69,6 +70,9 @@ def create_app() -> Flask:
     * The test suite, which calls ``create_app().test_client()`` directly.
     """
     app = Flask(__name__)
+
+    # Allow the Vite dev server to call the API during local development.
+    CORS(app, resources={r"/api/*": {"origins": ["http://localhost:5173", "http://127.0.0.1:5173"]}})
 
     # Mounting under /api keeps all versioning changes to this one line.
     app.register_blueprint(api_bp, url_prefix="/api")
