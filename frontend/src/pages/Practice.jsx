@@ -12,13 +12,17 @@ function Practice({ attempts, setAttempts }) {
   const [code, setCode] = useState(starterCode);
   const [status, setStatus] = useState("Idle");
   const [output, setOutput] = useState("");
-  const [hint, setHint] = useState("");
+  const [hints, setHints] = useState(null);
+  const [errorLine, setErrorLine] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleRun = async () => {
     try {
       setStatus("Running...");
       setOutput("");
-      setHint("");
+      setHints(null);
+      setErrorLine(null);
+      setErrorMessage("");
 
       const res = await submitCode({
         user_id: "demo_user",
@@ -48,18 +52,22 @@ function Practice({ attempts, setAttempts }) {
         payload?.stderr ??
         "No output returned.";
 
-      const finalHint = payload?.hint ?? exec?.hint ?? "";
+      const finalHints = payload?.hints ?? null;
+      const finalErrorLine = exec?.line_number ?? null;
+      const finalErrorMessage = exec?.error_message ?? "";
 
       setStatus(finalStatus);
       setOutput(finalOutput);
-      setHint(finalHint);
+      setHints(finalHints);
+      setErrorLine(finalErrorLine);
+      setErrorMessage(finalErrorMessage);
 
       const newAttempt = {
         id: Date.now(),
         code: code,
         status: finalStatus,
         output: finalOutput,
-        hint: finalHint,
+        hints: finalHints,
         timestamp: new Date().toLocaleString(),
       };
 
@@ -68,7 +76,9 @@ function Practice({ attempts, setAttempts }) {
       console.error(err);
       setStatus("Backend connection failed");
       setOutput("Check if backend is running on port 5000");
-      setHint("");
+      setHints(null);
+      setErrorLine(null);
+      setErrorMessage("");
     }
   };
 
@@ -76,7 +86,9 @@ function Practice({ attempts, setAttempts }) {
     setCode(starterCode);
     setStatus("Idle");
     setOutput("");
-    setHint("");
+    setHints(null);
+    setErrorLine(null);
+    setErrorMessage("");
   };
 
   return (
@@ -88,13 +100,13 @@ function Practice({ attempts, setAttempts }) {
 
         <div className="workspace-right">
           <div className="card practice-editor">
-            <EditorToolbar onRun={handleRun} onReset={handleReset} />
-            <CodeEditor code={code} setCode={setCode} />
+            <EditorToolbar onRun={handleRun} onReset={handleReset} isRunning={status === "Running..."} />
+            <CodeEditor code={code} setCode={setCode} errorLine={errorLine} errorMessage={errorMessage} readOnly={status === "Running..."} />
           </div>
 
           <div className="workspace-feedback">
-            <OutputPanel output={output} status={status} />
-            <HintPanel hint={hint} status={status} />
+            <OutputPanel output={output} status={status} errorLine={errorLine} />
+            <HintPanel hints={hints} status={status} />
           </div>
         </div>
       </div>

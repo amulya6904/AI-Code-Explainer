@@ -29,8 +29,9 @@ from typing import Optional
 from flask import Blueprint, request
 
 from db import log_submission
+from fallback_engine import process_with_fallback
 from java_engine import execute_java_code
-from llm import generate_hint
+from llm import generate_hints
 from response import ErrorCode, fail, ok
 
 logger = logging.getLogger(__name__)
@@ -180,16 +181,33 @@ def submit_code():
         )
 
     # ------------------------------------------------------------------
-    # 3. LLM hint generation
-    #    Controlled entirely by LLM_ENABLED env var – no code change needed
-    #    to activate. generate_hint() returns None when disabled.
+    # 3. Hint generation with fallback pipeline
+    #    Try LLM first, then pass through the fallback engine which
+    #    validates the output, retries with a strict prompt if needed,
+    #    falls back to error templates, and finally a generic hint.
+    #    This guarantees hints are always returned on errors.
     # ------------------------------------------------------------------
-    hint: Optional[str] = None
+    hints: Optional[dict] = None
     if result["status"] != "Success":
         try:
-            hint = generate_hint(code=code, result=result)
+            raw_hints = generate_hints(code=code, execution_result=result, hint_level=3)
+            if raw_hints.get("status") == "LLMError":
+                raw_hints = {}
+            hints = process_with_fallback(
+                code=code,
+                execution_result=result,
+                hint_level=3,
+                llm_output=raw_hints,
+            )
         except Exception as exc:  # noqa: BLE001
-            logger.error("generate_hint raised unexpectedly: %s", exc)
+            logger.error("hint generation raised unexpectedly: %s", exc)
+            # Last-resort: build a minimal hint from the error message
+            hints = {
+                "problem_summary": "There is an issue in your code.",
+                "why": str(result.get("error_message") or "Unknown error."),
+                "hint_1": "Carefully read the error message and identify the problematic line.",
+                "learning_tip": "Focus on understanding the concept behind the error.",
+            }
 
     # ------------------------------------------------------------------
     # 4. Persist to MongoDB  (non-fatal – logging failure ≠ API failure)
@@ -205,7 +223,7 @@ def submit_code():
     data = {
         "user_id":   user_id,
         "execution": result,
-        "hint":      hint,
+        "hints":     hints,
     }
 
     return ok(data, http_status=_http_status_for(result["status"]))

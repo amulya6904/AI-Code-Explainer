@@ -1,8 +1,8 @@
-function EditorToolbar({ onRun, onReset }) {
+function EditorToolbar({ onRun, onReset, isRunning }) {
   return (
     <div className="editor-toolbar">
       <div className="editor-toolbar-left">
-        <select className="editor-select" defaultValue="Java">
+        <select className="editor-select" defaultValue="Java" disabled={isRunning}>
           <option value="Java">Java</option>
         </select>
 
@@ -10,12 +10,19 @@ function EditorToolbar({ onRun, onReset }) {
       </div>
 
       <div className="editor-toolbar-right">
-        <button className="toolbar-btn toolbar-reset" onClick={onReset}>
+        <button className="toolbar-btn toolbar-reset" onClick={onReset} disabled={isRunning}>
           Reset
         </button>
 
-        <button className="toolbar-btn toolbar-run" onClick={onRun}>
-          Run
+        <button className="toolbar-btn toolbar-run" onClick={onRun} disabled={isRunning}>
+          {isRunning ? (
+            <span className="run-btn-loading">
+              <span className="spinner" />
+              Running...
+            </span>
+          ) : (
+            "Run"
+          )}
         </button>
       </div>
     </div>
