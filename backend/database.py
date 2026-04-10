@@ -248,6 +248,57 @@ def count_submissions_for_user(user_id: str) -> int:
     return submissions_col().count_documents({"user_id": user_id})
 
 
+def get_recent_submissions_for_user(user_id: str, limit: int = 8) -> list:
+    """
+    Return the newest `limit` submit-type submissions for a user,
+    projected into the shape the Progress page's "Recent Activity"
+    feed expects:
+
+      {
+        "id":            str  (MongoDB _id),
+        "problem_id":    int | None,
+        "problem_title": str,
+        "status":        "Success" | <error_type>,
+        "topic":         str  (catalog topic, falls back to detected),
+        "timestamp":     str  (ISO-8601)
+      }
+
+    Runs are excluded — the feed is a log of real attempts, not every
+    click of the editor's Run button.
+    """
+    cursor = (
+        submissions_col()
+        .find(
+            {
+                "user_id": user_id,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+            }
+        )
+        .sort("timestamp", DESCENDING)
+        .limit(limit)
+    )
+
+    feed = []
+    for doc in cursor:
+        resolved = bool(doc.get("resolved"))
+        error_type = doc.get("error_type") or "Error"
+        ts = doc.get("timestamp")
+        feed.append({
+            "id":            str(doc.get("_id")),
+            "problem_id":    doc.get("problem_id"),
+            "problem_title": doc.get("problem_title") or "Untitled problem",
+            "status":        "Success" if resolved else error_type,
+            "topic":         doc.get("problem_topic")
+                              or doc.get("detected_topic")
+                              or "general",
+            "timestamp":     ts.isoformat() if ts else None,
+        })
+    return feed
+
+
 def get_submit_attempts_for_user(user_id: str) -> list:
     """
     Return the minimal fields needed to compute hint-weighted mastery
@@ -267,6 +318,77 @@ def get_submit_attempts_for_user(user_id: str) -> list:
         {"resolved": 1, "hints_used": 1, "detected_topic": 1, "error_type": 1},
     )
     return list(cursor)
+
+
+def get_active_dates_for_user(user_id: str) -> list:
+    """
+    Return the sorted list of YYYY-MM-DD strings on which the user
+    made at least one submission. Used by the streak calculator and
+    the activity calendar card on the Dashboard.
+    """
+    pipeline = [
+        {"$match": {"user_id": user_id}},
+        {
+            "$group": {
+                "_id": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date":   "$timestamp",
+                    }
+                }
+            }
+        },
+        {"$sort": {"_id": 1}},
+    ]
+    return [doc["_id"] for doc in submissions_col().aggregate(pipeline)]
+
+
+def get_topic_performance_for_user(user_id: str) -> list:
+    """
+    Aggregate per-catalog-topic submit attempts for a user.
+
+    Groups by `problem_topic` (the frontend's canonical topic name, e.g.
+    'Java Basics', 'Loops'), NOT the error-derived `detected_topic`.
+    This keeps the Dashboard topic cards aligned with the problem
+    catalog, while leaving room for the error-level mastery signal.
+
+    Only submission_type == 'submit' (or legacy docs without the field)
+    are counted, so accidental Run clicks don't skew accuracy.
+
+    Returns a list of:
+      {"topic": str, "attempts": int, "successes": int, "accuracy": float}
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id": user_id,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+                "problem_topic": {"$nin": [None, ""]},
+            }
+        },
+        {
+            "$group": {
+                "_id": "$problem_topic",
+                "attempts":  {"$sum": 1},
+                "successes": {"$sum": {"$cond": ["$resolved", 1, 0]}},
+            }
+        },
+    ]
+
+    out = []
+    for doc in submissions_col().aggregate(pipeline):
+        attempts = doc["attempts"]
+        successes = doc["successes"]
+        out.append({
+            "topic":     doc["_id"],
+            "attempts":  attempts,
+            "successes": successes,
+            "accuracy":  (successes / attempts) if attempts else 0.0,
+        })
+    return out
 
 
 def get_error_counts_for_user(user_id: str) -> list:

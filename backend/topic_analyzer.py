@@ -11,11 +11,16 @@ Public API
   get_learning_summary(user_id)    -> dict
 """
 
+from datetime import date, timedelta
+
 from database import (
     count_submissions_for_user,
+    get_active_dates_for_user,
     get_all_topic_stats,
     get_error_counts_for_user,
+    get_recent_submissions_for_user,
     get_submit_attempts_for_user,
+    get_topic_performance_for_user,
 )
 
 # ---------------------------------------------------------------------------
@@ -52,6 +57,72 @@ HINT_WEIGHT_STEP = 0.3
 def _hint_weight(hints_used: int) -> float:
     """Credit weight for a solved submission given how many hints were used."""
     return max(0.0, 1.0 - HINT_WEIGHT_STEP * max(0, int(hints_used or 0)))
+
+
+# ---------------------------------------------------------------------------
+# Streak computation
+# ---------------------------------------------------------------------------
+
+def _compute_streaks(active_date_strings: list) -> dict:
+    """
+    Turn a sorted list of YYYY-MM-DD strings into a streak summary:
+
+      {
+        "current":      <int — streak ending today (or yesterday)>,
+        "longest":      <int — longest consecutive run in the history>,
+        "active_dates": <list of ISO date strings, deduped + sorted>
+      }
+
+    Rules:
+      * 'current' only counts if the user is active today OR yesterday,
+        so Monday's streak survives until Tuesday night.
+      * Two same-day submissions don't double-count — dates are deduped
+        before the math runs.
+    """
+    if not active_date_strings:
+        return {"current": 0, "longest": 0, "active_dates": []}
+
+    days = sorted({date.fromisoformat(s) for s in active_date_strings})
+
+    # Longest run: walk the sorted list, reset on any gap > 1.
+    longest = 1
+    run = 1
+    for i in range(1, len(days)):
+        if (days[i] - days[i - 1]) == timedelta(days=1):
+            run += 1
+            longest = max(longest, run)
+        else:
+            run = 1
+
+    # Current run: must anchor at today or yesterday, else it's broken.
+    today = date.today()
+    yesterday = today - timedelta(days=1)
+    last = days[-1]
+
+    if last == today:
+        anchor = today
+    elif last == yesterday:
+        anchor = yesterday
+    else:
+        return {
+            "current": 0,
+            "longest": longest,
+            "active_dates": [d.isoformat() for d in days],
+        }
+
+    current = 0
+    idx = len(days) - 1
+    probe = anchor
+    while idx >= 0 and days[idx] == probe:
+        current += 1
+        probe -= timedelta(days=1)
+        idx -= 1
+
+    return {
+        "current":      current,
+        "longest":      longest,
+        "active_dates": [d.isoformat() for d in days],
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +264,51 @@ def get_learning_summary(user_id: str) -> dict:
         success_rate = 0.0
 
     # ------------------------------------------------------------------
+    # Per-catalog-topic performance (feeds the Dashboard topic cards
+    # and the Progress page's "Topic Mastery" list)
+    # ------------------------------------------------------------------
+    topic_performance = get_topic_performance_for_user(user_id)
+
+    # ------------------------------------------------------------------
+    # Activity streak (feeds the Dashboard "current streak" tile + the
+    # calendar card)
+    # ------------------------------------------------------------------
+    streak = _compute_streaks(get_active_dates_for_user(user_id))
+
+    # ------------------------------------------------------------------
+    # Recent activity feed (Progress page)
+    # ------------------------------------------------------------------
+    recent_submissions = get_recent_submissions_for_user(user_id, limit=8)
+
+    # ------------------------------------------------------------------
+    # Recommendations
+    # ------------------------------------------------------------------
+    # The backend doesn't own the problem catalog, so it can only point
+    # at *topics* that need attention. The frontend joins these topic
+    # hints against problems.js to pick a concrete problem to surface
+    # in the "Recommended Next" card on the Progress page.
+    #
+    # Priority order:
+    #   1. Weak topics        — student is stuck, biggest payoff
+    #   2. Improving topics   — ride the momentum
+    #   3. Neutral (general)  — fallback for brand-new users
+    recommendation_topics = list(weak) + list(improving)
+    if not recommendation_topics:
+        recommendation_topics = ["general"]
+
+    recommendations = [
+        {
+            "topic":  t,
+            "reason": (
+                f"Strengthen {t} fundamentals" if t in weak
+                else f"Keep the momentum on {t}" if t in improving
+                else "Warm up with an easy problem"
+            ),
+        }
+        for t in recommendation_topics[:3]
+    ]
+
+    # ------------------------------------------------------------------
     # Error breakdown
     # ------------------------------------------------------------------
     # Count all failed attempts (runs + submits) by error_type. Populates
@@ -207,5 +323,9 @@ def get_learning_summary(user_id: str) -> dict:
         "total_submissions":      total,
         "successful_submissions": successful_submits,
         "success_rate":           round(success_rate, 4),
+        "topic_performance":      topic_performance,
+        "streak":                 streak,
+        "recent_submissions":     recent_submissions,
+        "recommendations":        recommendations,
         "error_breakdown":        error_breakdown,
     }

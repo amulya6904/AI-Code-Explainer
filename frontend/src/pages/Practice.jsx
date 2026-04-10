@@ -126,6 +126,7 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         submission_type: "run",
         problem_id: problem.id,
         problem_title: problem.title,
+        problem_topic: problem.topic,
         hints_used: hintsUsed,
       });
 
@@ -172,6 +173,7 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         submission_type: "submit",
         problem_id: problem.id,
         problem_title: problem.title,
+        problem_topic: problem.topic,
         hints_used: hintsUsed,
       });
 

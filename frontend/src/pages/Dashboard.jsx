@@ -1,7 +1,6 @@
-import { useEffect, useState } from "react";
 import CalendarCard from "../components/CalendarCard";
 import { problemsByTopic, TOPIC_ORDER, problems } from "../data/problems";
-import { fetchLearningSummary } from "../api/mockData";
+import { useLearningSummary } from "../hooks/useLearningSummary";
 
 // ─── Tiny inline icons (1.6px stroke) ─────────────────────────
 const Svg = ({ children }) => (
@@ -93,17 +92,7 @@ const TOPIC_META = {
 };
 
 function Dashboard({ setActivePage, setSelectedProblemId }) {
-  const [summary, setSummary] = useState(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchLearningSummary("demo_user").then((data) => {
-      if (!cancelled) setSummary(data);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { summary, status, reload } = useLearningSummary("demo_user");
 
   const grouped = problemsByTopic();
   const dailyChallenge = problems[0];
@@ -113,14 +102,19 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
     setActivePage("Practice");
   };
 
-  const loggedDates = summary?.streak?.active_dates ?? [];
+  // While the summary is still loading we show an em-dash so the
+  // user sees "fetching" instead of a flash of all-zeros. Once
+  // ready (or errored — treat error as "show what we have, which
+  // is nothing"), render real numbers.
+  const ready = status === "ready";
+  const show = (value) => (ready ? value : "—");
+
+  const loggedDates   = summary?.streak?.active_dates ?? [];
   const streakCurrent = summary?.streak?.current ?? 0;
-  const streakBest = summary?.streak?.longest ?? 0;
-  const totalSolved = summary?.successful_submissions ?? 0;
-  const totalSubs = summary?.total_submissions ?? 0;
-  const successPct = summary
-    ? Math.round((summary.success_rate ?? 0) * 100)
-    : 0;
+  const streakBest    = summary?.streak?.longest ?? 0;
+  const totalSolved   = summary?.successful_submissions ?? 0;
+  const totalSubs     = summary?.total_submissions ?? 0;
+  const successPct    = Math.round((summary?.success_rate ?? 0) * 100);
   const topicsMastered = summary?.strong_topics?.length ?? 0;
 
   // Build topic stats from topic_performance so each topic card has a ring
@@ -136,6 +130,22 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
 
   return (
     <section className="page">
+      {status === "error" && (
+        <div className="fetch-banner fetch-banner--error">
+          <div className="fetch-banner__icon">!</div>
+          <div className="fetch-banner__body">
+            <div className="fetch-banner__title">Couldn't load your stats</div>
+            <div className="fetch-banner__text">
+              The backend didn't respond. Your progress data isn't showing,
+              but you can still practice below.
+            </div>
+          </div>
+          <button className="fetch-banner__retry" onClick={reload}>
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* ══════════════════════════════════════════════════════
           HERO
           ══════════════════════════════════════════════════════ */}
@@ -218,8 +228,8 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
           <div className="quick-stat__text">
             <div className="quick-stat__label">Solved</div>
             <div className="quick-stat__value">
-              {totalSolved}
-              <span className="unit">/ {totalSubs}</span>
+              {show(totalSolved)}
+              <span className="unit">/ {show(totalSubs)}</span>
             </div>
           </div>
         </div>
@@ -231,7 +241,7 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
           <div className="quick-stat__text">
             <div className="quick-stat__label">Current streak</div>
             <div className="quick-stat__value">
-              {streakCurrent}
+              {show(streakCurrent)}
               <span className="unit">days</span>
             </div>
           </div>
@@ -244,7 +254,7 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
           <div className="quick-stat__text">
             <div className="quick-stat__label">Success rate</div>
             <div className="quick-stat__value">
-              {successPct}
+              {show(successPct)}
               <span className="unit">%</span>
             </div>
           </div>
@@ -257,7 +267,7 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
           <div className="quick-stat__text">
             <div className="quick-stat__label">Topics mastered</div>
             <div className="quick-stat__value">
-              {topicsMastered}
+              {show(topicsMastered)}
               <span className="unit">/ 4</span>
             </div>
           </div>
@@ -295,12 +305,12 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
               <IconFlame />
             </div>
             <div className="streak-big__num">
-              <div className="streak-big__value">{streakCurrent}</div>
+              <div className="streak-big__value">{show(streakCurrent)}</div>
               <div className="streak-big__label">day streak</div>
             </div>
           </div>
           <div className="streak-best">
-            Personal best · <strong>{streakBest} days</strong>
+            Personal best · <strong>{show(streakBest)} days</strong>
           </div>
           <div className="motivation-box">
             <p>Consistency beats intensity. Code a little every day.</p>

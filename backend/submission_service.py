@@ -115,6 +115,7 @@ def save_submission(
     submission_type: str = "submit",
     problem_id: int = None,
     problem_title: str = None,
+    problem_topic: str = None,
 ) -> str:
     """
     Persist a single Java submission and (for real submits only) update the
@@ -141,6 +142,11 @@ def save_submission(
                          this is "submit".
         problem_id:    Catalog id of the problem being attempted (submit only).
         problem_title: Human-readable problem title (submit only).
+        problem_topic: Canonical catalog topic (e.g. "Java Basics", "Loops").
+                       This is the *frontend* topic name and is used for all
+                       Dashboard / Progress aggregation. Distinct from the
+                       error-derived `topic` arg, which is only used for the
+                       weak/improving/strong mastery signal.
 
     Returns:
         The MongoDB _id string of the newly inserted submission document.
@@ -166,6 +172,7 @@ def save_submission(
         "submission_type": normalized_type,
         "problem_id":      problem_id,
         "problem_title":   problem_title,
+        "problem_topic":   problem_topic,
         "timestamp":       now,
     }
     submission_id = insert_submission(doc)

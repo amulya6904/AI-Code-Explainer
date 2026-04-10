@@ -1,5 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
-import { fetchLearningSummary, deriveInsight } from "../api/mockData";
+import { useMemo } from "react";
+import { useLearningSummary } from "../hooks/useLearningSummary";
+import { deriveInsight } from "../utils/insight";
+import { problems, TOPIC_ORDER } from "../data/problems";
 
 // ─── Helpers ─────────────────────────────────────────────────
 const STATUS_CLS = {
@@ -9,9 +11,63 @@ const STATUS_CLS = {
 };
 
 function classifyTopic(topicName, summary) {
-  if (summary.strong_topics.includes(topicName)) return "strong";
-  if (summary.improving_topics.includes(topicName)) return "improving";
+  if ((summary.strong_topics ?? []).includes(topicName)) return "strong";
+  if ((summary.improving_topics ?? []).includes(topicName)) return "improving";
   return "weak";
+}
+
+// Merge backend topic_performance (only topics with attempts) with
+// the canonical TOPIC_ORDER so the Progress page always shows every
+// catalog topic, even for a brand-new user with zero submissions.
+function buildTopicPerformance(summary) {
+  const byTopic = new Map();
+  for (const tp of summary?.topic_performance ?? []) {
+    byTopic.set(tp.topic, tp);
+  }
+  return TOPIC_ORDER.map(
+    (topic) =>
+      byTopic.get(topic) ?? {
+        topic,
+        attempts: 0,
+        successes: 0,
+        accuracy: 0,
+      }
+  );
+}
+
+// Backend recommendations are topic-only (e.g. {topic: "Loops", reason: "..."}).
+// The Progress UI expects a concrete problem to click into, so we join
+// each recommended topic against the catalog and pick the first
+// unsolved-looking problem (falling back to any problem in the topic).
+function enrichRecommendations(rawRecs, recentSubmissions) {
+  const solvedIds = new Set(
+    (recentSubmissions ?? [])
+      .filter((s) => s.status === "Success")
+      .map((s) => s.problem_id)
+  );
+
+  const enriched = [];
+  const used = new Set();
+
+  for (const rec of rawRecs ?? []) {
+    const topicProblems = problems.filter((p) => p.topic === rec.topic);
+    if (topicProblems.length === 0) continue;
+
+    const pick =
+      topicProblems.find((p) => !solvedIds.has(p.id) && !used.has(p.id)) ??
+      topicProblems.find((p) => !used.has(p.id)) ??
+      topicProblems[0];
+
+    used.add(pick.id);
+    enriched.push({
+      problem_id: pick.id,
+      title:      pick.title,
+      topic:      pick.topic,
+      difficulty: pick.difficulty,
+      reason:     rec.reason,
+    });
+  }
+  return enriched;
 }
 
 function pct(value) {
@@ -41,28 +97,29 @@ function formatRelativeTime(isoString) {
 
 // ─── Component ───────────────────────────────────────────────
 function Progress({ setActivePage, setSelectedProblemId }) {
-  const [summary, setSummary] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetchLearningSummary("demo_user").then((data) => {
-      if (!cancelled) {
-        setSummary(data);
-        setLoading(false);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { summary, status, reload } = useLearningSummary("demo_user");
 
   const insight = useMemo(() => deriveInsight(summary), [summary]);
 
+  // Full catalog-topic row set, even for zero-submission users.
+  const topicPerformance = useMemo(
+    () => buildTopicPerformance(summary),
+    [summary]
+  );
+
+  // Problem-level recommendations joined from the backend topic hints.
+  const enrichedRecommendations = useMemo(
+    () =>
+      enrichRecommendations(
+        summary?.recommendations,
+        summary?.recent_submissions
+      ),
+    [summary]
+  );
+
   const maxErrorCount = useMemo(() => {
-    if (!summary) return 1;
-    return Math.max(...summary.error_breakdown.map((e) => e.count), 1);
+    const breakdown = summary?.error_breakdown ?? [];
+    return Math.max(...breakdown.map((e) => e.count), 1);
   }, [summary]);
 
   const openProblem = (problemId) => {
@@ -72,27 +129,53 @@ function Progress({ setActivePage, setSelectedProblemId }) {
     }
   };
 
-  if (loading || !summary) {
+  if (status === "loading") {
     return (
       <section className="page">
         <div className="page-header">
-          <h2>Progress</h2>
-          <p>Loading your learning analytics…</p>
+          <span className="eyebrow">Learning analytics</span>
+          <h2>Your Progress</h2>
+        </div>
+        <div className="fetch-state fetch-state--loading">
+          <div className="fetch-state__spinner" />
+          <div className="fetch-state__title">Loading your learning analytics…</div>
+          <div className="fetch-state__text">
+            Pulling your latest submissions from the backend.
+          </div>
         </div>
       </section>
     );
   }
 
-  const {
-    total_submissions,
-    successful_submissions,
-    success_rate,
-    topic_performance,
-    streak,
-    recent_submissions,
-    error_breakdown,
-    recommendations,
-  } = summary;
+  if (status === "error" || !summary) {
+    return (
+      <section className="page">
+        <div className="page-header">
+          <span className="eyebrow">Learning analytics</span>
+          <h2>Your Progress</h2>
+        </div>
+        <div className="fetch-state fetch-state--error">
+          <div className="fetch-state__icon">!</div>
+          <div className="fetch-state__title">Couldn't reach the backend</div>
+          <div className="fetch-state__text">
+            Check that the Flask server is running on port 5000, then retry.
+          </div>
+          <button className="fetch-state__retry" onClick={reload}>
+            Retry
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  const total_submissions      = summary.total_submissions ?? 0;
+  const successful_submissions = summary.successful_submissions ?? 0;
+  const success_rate           = summary.success_rate ?? 0;
+  const streak                 = summary.streak ?? { current: 0, longest: 0 };
+  const recent_submissions     = summary.recent_submissions ?? [];
+  const error_breakdown        = summary.error_breakdown ?? [];
+  const strong_topics          = summary.strong_topics ?? [];
+  const weak_topics            = summary.weak_topics ?? [];
 
   return (
     <section className="page">
@@ -146,11 +229,11 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="stat-card__icon stat-card__icon--purple">◈</div>
           <div className="stat-card__label">Topics mastered</div>
           <div className="stat-card__value">
-            {summary.strong_topics.length}
-            <span className="unit">/ {topic_performance.length}</span>
+            {strong_topics.length}
+            <span className="unit">/ {TOPIC_ORDER.length}</span>
           </div>
           <div className="stat-card__hint">
-            {summary.weak_topics.length} need work
+            {weak_topics.length} need work
           </div>
         </div>
       </div>
@@ -162,7 +245,7 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="card">
             <div className="progress-section-title">Topic Mastery</div>
             <div className="topic-mastery-list">
-              {topic_performance.map((tp) => {
+              {topicPerformance.map((tp) => {
                 const status = classifyTopic(tp.topic, summary);
                 return (
                   <div key={tp.topic} className="topic-mastery-item">
@@ -195,6 +278,14 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="card">
             <div className="progress-section-title">Error Breakdown</div>
             <div className="error-breakdown">
+              {error_breakdown.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-state__icon">✓</div>
+                  <div className="empty-state__text">
+                    No errors recorded yet — nice and clean.
+                  </div>
+                </div>
+              )}
               {error_breakdown.map((err) => (
                 <div key={err.type} className="error-type-row">
                   <div className="error-type-header">
@@ -224,26 +315,36 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="card">
             <div className="progress-section-title">Recommended Next</div>
             <div className="recommendations-list">
-              {recommendations.map((rec, idx) => (
-                <button
-                  key={rec.problem_id}
-                  className="recommendation-item"
-                  onClick={() => openProblem(rec.problem_id)}
-                >
-                  <span className="recommendation-number">
-                    {String(idx + 1).padStart(2, "0")}
-                  </span>
-                  <div className="recommendation-body">
-                    <div className="recommendation-title">{rec.title}</div>
-                    <div className="recommendation-reason">{rec.reason}</div>
+              {enrichedRecommendations.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state__icon">◇</div>
+                  <div className="empty-state__text">
+                    Submit a few problems to unlock personalized
+                    recommendations.
                   </div>
-                  <span
-                    className={`badge badge--${rec.difficulty.toLowerCase()}`}
+                </div>
+              ) : (
+                enrichedRecommendations.map((rec, idx) => (
+                  <button
+                    key={rec.problem_id}
+                    className="recommendation-item"
+                    onClick={() => openProblem(rec.problem_id)}
                   >
-                    {rec.difficulty}
-                  </span>
-                </button>
-              ))}
+                    <span className="recommendation-number">
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div className="recommendation-body">
+                      <div className="recommendation-title">{rec.title}</div>
+                      <div className="recommendation-reason">{rec.reason}</div>
+                    </div>
+                    <span
+                      className={`badge badge--${rec.difficulty.toLowerCase()}`}
+                    >
+                      {rec.difficulty}
+                    </span>
+                  </button>
+                ))
+              )}
             </div>
           </div>
 

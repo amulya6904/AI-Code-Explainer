@@ -175,6 +175,7 @@ def submit_code():
     submission_type = raw_type if raw_type in ("run", "submit") else "submit"
     problem_id = body.get("problem_id")
     problem_title = body.get("problem_title")
+    problem_topic = body.get("problem_topic")  # canonical catalog topic
 
     # The frontend HintPanel is the source of truth for how many hint
     # levels the student has actually revealed — it's echoed back here
@@ -290,6 +291,7 @@ def submit_code():
             submission_type=submission_type,
             problem_id=problem_id,
             problem_title=problem_title,
+            problem_topic=problem_topic,
         )
 
     # ------------------------------------------------------------------
