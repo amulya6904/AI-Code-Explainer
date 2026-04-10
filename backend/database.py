@@ -7,10 +7,12 @@ Collections:
   - users          : registered student profiles
   - submissions    : every Java code submission + error details
   - topic_stats    : per-user, per-topic learning performance counters
+  - hint_state     : progressive hint escalation state per (user, code)
 """
 
 import os
 
+import certifi
 from dotenv import load_dotenv
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import PyMongoError
@@ -41,7 +43,9 @@ def get_db():
             raise RuntimeError(message)
 
         try:
-            _client = MongoClient(MONGO_URI)
+            # tlsCAFile=certifi.where() is required on Windows so MongoDB Atlas
+            # TLS handshakes succeed against the bundled CA store.
+            _client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
             _client.admin.command("ping")
             _db = _client[DB_NAME]
             _ensure_indexes(_db)
@@ -63,6 +67,12 @@ def _ensure_indexes(db):
     db.topic_stats.create_index(
         [("user_id", ASCENDING), ("topic", ASCENDING)], unique=True
     )
+    # hint_state: unique per (user, code_hash) for progressive hint escalation
+    db.hint_state.create_index(
+        [("user_id", ASCENDING), ("code_hash", ASCENDING)],
+        unique=True,
+        name="user_code_unique",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +92,11 @@ def submissions_col():
 def topic_stats_col():
     """Return the `topic_stats` collection."""
     return get_db().topic_stats
+
+
+def hint_state_col():
+    """Return the `hint_state` collection."""
+    return get_db().hint_state
 
 
 # ---------------------------------------------------------------------------

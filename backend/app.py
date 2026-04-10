@@ -40,7 +40,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from flask_cors import CORS
 
-# Load .env BEFORE any module reads os.getenv (e.g. llm.py, db.py).
+# Load .env BEFORE any module reads os.getenv (e.g. llm.py, database.py).
 load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
 
 from response import ErrorCode, fail
