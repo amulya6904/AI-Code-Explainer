@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import { problems } from "./data/problems";
+import "./styles/theme.css";
 import "./styles/globals.css";
 import "./styles/layout.css";
 
@@ -22,7 +23,6 @@ function App() {
           <Dashboard
             setActivePage={setActivePage}
             setSelectedProblemId={setSelectedProblemId}
-            attempts={attempts}
           />
         )}
         {activePage === "Practice" && (
@@ -32,7 +32,12 @@ function App() {
             selectedProblemId={selectedProblemId}
           />
         )}
-        {activePage === "Progress" && <Progress attempts={attempts} />}
+        {activePage === "Progress" && (
+          <Progress
+            setActivePage={setActivePage}
+            setSelectedProblemId={setSelectedProblemId}
+          />
+        )}
       </main>
     </div>
   );

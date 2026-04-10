@@ -1,26 +1,89 @@
-const menuItems = ["Dashboard", "Practice", "Progress"];
+// Inline SVG icons — keeps the app dependency-free
+// while still giving us crisp 1.5px stroke icons.
+const Icon = ({ children }) => (
+  <svg
+    className="sidebar-icon"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    {children}
+  </svg>
+);
+
+const DashboardIcon = () => (
+  <Icon>
+    <rect x="3" y="3" width="7" height="9" rx="1.5" />
+    <rect x="14" y="3" width="7" height="5" rx="1.5" />
+    <rect x="14" y="12" width="7" height="9" rx="1.5" />
+    <rect x="3" y="16" width="7" height="5" rx="1.5" />
+  </Icon>
+);
+
+const PracticeIcon = () => (
+  <Icon>
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </Icon>
+);
+
+const ProgressIcon = () => (
+  <Icon>
+    <path d="M3 3v18h18" />
+    <path d="M7 14l4-4 4 4 5-5" />
+  </Icon>
+);
+
+const SparkleIcon = () => (
+  <Icon>
+    <path d="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7L12 3z" />
+    <path d="M19 14l.8 2 2 .8-2 .8L19 19.5l-.8-1.9-2-.8 2-.8L19 14z" />
+  </Icon>
+);
+
+const menuItems = [
+  { label: "Dashboard", icon: DashboardIcon },
+  { label: "Practice", icon: PracticeIcon },
+  { label: "Progress", icon: ProgressIcon },
+];
 
 function Sidebar({ activePage, setActivePage }) {
   return (
     <aside className="sidebar">
-      <div className="sidebar-logo">
-        <h2>Codexa AI</h2>
-        <p>Your AI coding tutor</p>
+      <div className="sidebar-brand">
+        <div className="sidebar-logo-mark">{"{C}"}</div>
+        <div className="sidebar-brand-text">
+          <h2>Codexa AI</h2>
+          <p>Java Tutor</p>
+        </div>
       </div>
 
       <nav className="sidebar-nav">
-        {menuItems.map((item) => (
+        <div className="sidebar-section-label">Workspace</div>
+        {menuItems.map(({ label, icon: IconCmp }) => (
           <button
-            key={item}
-            className={`sidebar-link ${
-              activePage === item ? "active" : ""
-            }`}
-            onClick={() => setActivePage(item)}
+            key={label}
+            className={`sidebar-link ${activePage === label ? "active" : ""}`}
+            onClick={() => setActivePage(label)}
           >
-            {item}
+            <IconCmp />
+            <span>{label}</span>
           </button>
         ))}
       </nav>
+
+      <div className="sidebar-footer">
+        <div className="sidebar-status">
+          <span className="status-dot" />
+          <span>AI ONLINE</span>
+        </div>
+        <p className="sidebar-footer-text">
+          Powered by LM Studio &amp; Java engine
+        </p>
+      </div>
     </aside>
   );
 }

@@ -75,16 +75,28 @@ function CodeEditor({ code, setCode, errorLine, errorMessage, readOnly }) {
 
   return (
     <Editor
-      height="320px"
+      height="380px"
       defaultLanguage="java"
-      theme="vs"
+      theme="vs-dark"
       value={code}
       onChange={handleChange}
       onMount={handleEditorMount}
       options={{
         fontSize: 14,
+        fontFamily:
+          "'JetBrains Mono', 'Fira Code', Consolas, monospace",
+        fontLigatures: true,
         minimap: { enabled: false },
         scrollBeyondLastLine: false,
+        smoothScrolling: true,
+        cursorBlinking: "smooth",
+        cursorSmoothCaretAnimation: "on",
+        padding: { top: 16, bottom: 16 },
+        renderLineHighlight: "gutter",
+        scrollbar: {
+          verticalScrollbarSize: 10,
+          horizontalScrollbarSize: 10,
+        },
         readOnly: readOnly || false,
       }}
     />
