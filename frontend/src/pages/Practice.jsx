@@ -1,21 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CodeEditor from "../components/editor/CodeEditor";
 import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/panels/OutputPanel";
 import HintPanel from "../components/panels/HintPanel";
 import ProblemGuidance from "../components/ProblemGuidance";
-import { problems } from "../data/problems";
-import { starterCode } from "../data/starterCode";
+import { getProblemById } from "../data/problems";
 import { submitCode } from "../api/client";
 
-function Practice({ attempts, setAttempts }) {
-  const [code, setCode] = useState(starterCode);
+function Practice({ attempts, setAttempts, selectedProblemId }) {
+  const problem = getProblemById(selectedProblemId);
+
+  const [code, setCode] = useState(problem.starterCode);
   const [status, setStatus] = useState("Idle");
   const [output, setOutput] = useState("");
   const [hints, setHints] = useState(null);
   const [errorLine, setErrorLine] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [showHintModal, setShowHintModal] = useState(false);
+
+  // When the user picks a different problem on the Dashboard, reset the
+  // editor + output to that problem's starter state.
+  useEffect(() => {
+    setCode(problem.starterCode);
+    setStatus("Idle");
+    setOutput("");
+    setHints(null);
+    setErrorLine(null);
+    setErrorMessage("");
+    setShowHintModal(false);
+  }, [problem.id]);
 
   const handleRun = async () => {
     try {
@@ -85,7 +98,7 @@ function Practice({ attempts, setAttempts }) {
   };
 
   const handleReset = () => {
-    setCode(starterCode);
+    setCode(problem.starterCode);
     setStatus("Idle");
     setOutput("");
     setHints(null);
@@ -97,7 +110,7 @@ function Practice({ attempts, setAttempts }) {
     <section className="workspace-page">
       <div className="workspace-layout">
         <div className="workspace-left card">
-          <ProblemGuidance problem={problems[0]} />
+          <ProblemGuidance problem={problem} />
         </div>
 
         <div className="workspace-right">

@@ -764,9 +764,41 @@
   flex: 1;
 }
 
-.question-difficulty.easy {
-  color: green;
+.question-difficulty {
   font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.question-difficulty.easy {
+  color: #15803d;
+  background: #dcfce7;
+}
+
+.question-difficulty.medium {
+  color: #b45309;
+  background: #fef3c7;
+}
+
+.question-difficulty.hard {
+  color: #b91c1c;
+  background: #fee2e2;
+}
+
+.topic-group {
+  margin-top: 22px;
+}
+
+.topic-group-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0 0 10px 2px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
 .calendar-section {

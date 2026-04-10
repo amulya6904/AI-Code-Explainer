@@ -1,12 +1,23 @@
 import { useState } from "react";
 import CalendarCard from "../components/CalendarCard";
+import { problemsByTopic, TOPIC_ORDER, problems } from "../data/problems";
 
-function Dashboard({ setActivePage, setSelectedQuestion, attempts }) {
+function Dashboard({ setActivePage, setSelectedProblemId, attempts }) {
   const [loggedInDates] = useState([
     "2026-04-07",
     "2026-04-08",
     "2026-04-15",
   ]);
+
+  const grouped = problemsByTopic();
+
+  // Daily challenge = the first problem in the catalog (a friendly starter).
+  const dailyChallenge = problems[0];
+
+  const openProblem = (problemId) => {
+    setSelectedProblemId(problemId);
+    setActivePage("Practice");
+  };
 
   return (
     <section className="page">
@@ -19,16 +30,11 @@ function Dashboard({ setActivePage, setSelectedQuestion, attempts }) {
         <div className="dashboard-top-left">
           <div className="card daily-challenge-card">
             <p className="card-label">🔥 Daily Challenge</p>
-            <h3>Two Sum</h3>
-            <p className="challenge-desc">
-              Find two indices such that their values add up to the target.
-            </p>
+            <h3>{dailyChallenge.title}</h3>
+            <p className="challenge-desc">{dailyChallenge.description}</p>
             <button
               className="primary-btn"
-              onClick={() => {
-                setSelectedQuestion("Two Sum");
-                setActivePage("Practice");
-              }}
+              onClick={() => openProblem(dailyChallenge.id)}
             >
               Solve Now
             </button>
@@ -50,18 +56,29 @@ function Dashboard({ setActivePage, setSelectedQuestion, attempts }) {
       <div className="question-section">
         <h2>Problems</h2>
 
-        <div className="question-list">
-          <button
-            className="question-item solved question-button"
-            onClick={() => setActivePage("Practice")}
-          >
-            <span className="question-id">1.</span>
-            <span className="question-title">Two Sum</span>
-            <span className="question-difficulty easy">Easy</span>
-          </button>
-        </div>
+        {TOPIC_ORDER.map((topic) => (
+          <div key={topic} className="topic-group">
+            <h3 className="topic-group-title">{topic}</h3>
+            <div className="question-list">
+              {grouped[topic].map((problem) => (
+                <button
+                  key={problem.id}
+                  className="question-item question-button"
+                  onClick={() => openProblem(problem.id)}
+                >
+                  <span className="question-id">{problem.id}.</span>
+                  <span className="question-title">{problem.title}</span>
+                  <span
+                    className={`question-difficulty ${problem.difficulty.toLowerCase()}`}
+                  >
+                    {problem.difficulty}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        ))}
       </div>
-
     </section>
   );
 }
