@@ -1008,6 +1008,19 @@ export const problems = [
   },
 ];
 
+// ─── expectedOutput normalization ──────────────────────────────────
+// Surface each problem's first example output as a top-level
+// `expectedOutput` field so the Practice page's Submit checker has a
+// single, canonical source of truth to compare against. Using the
+// existing examples data keeps the catalog DRY — there's no chance of
+// the displayed example drifting away from what the checker validates.
+problems.forEach((problem) => {
+  if (problem.expectedOutput === undefined) {
+    const firstOutput = problem.examples?.[0]?.output ?? "";
+    problem.expectedOutput = firstOutput;
+  }
+});
+
 // Helper: return problems grouped by topic in a fixed order.
 // Used by the Dashboard to render topic sections.
 export const TOPIC_ORDER = ["Java Basics", "Conditions", "Loops", "Arrays"];

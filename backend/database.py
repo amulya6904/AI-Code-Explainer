@@ -248,6 +248,52 @@ def count_submissions_for_user(user_id: str) -> int:
     return submissions_col().count_documents({"user_id": user_id})
 
 
+def get_submit_attempts_for_user(user_id: str) -> list:
+    """
+    Return the minimal fields needed to compute hint-weighted mastery
+    metrics: only documents where submission_type == 'submit'.
+
+    Older docs written before the submission_type field existed are
+    treated as submits (the field is absent → missing == 'submit').
+    """
+    cursor = submissions_col().find(
+        {
+            "user_id": user_id,
+            "$or": [
+                {"submission_type": "submit"},
+                {"submission_type": {"$exists": False}},
+            ],
+        },
+        {"resolved": 1, "hints_used": 1, "detected_topic": 1, "error_type": 1},
+    )
+    return list(cursor)
+
+
+def get_error_counts_for_user(user_id: str) -> list:
+    """
+    Aggregate non-success submissions by error_type for a given user.
+    Counts both runs and submits (the Progress page wants all error
+    telemetry), so failed runs still show up in the breakdown.
+
+    Returns a list of {"type": str, "count": int} sorted by count desc.
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id": user_id,
+                "resolved": False,
+                "error_type": {"$nin": [None, "", "Success"]},
+            }
+        },
+        {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    return [
+        {"type": doc["_id"], "count": doc["count"]}
+        for doc in submissions_col().aggregate(pipeline)
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Topic-stats helpers
 # ---------------------------------------------------------------------------

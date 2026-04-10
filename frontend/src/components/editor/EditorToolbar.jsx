@@ -1,11 +1,21 @@
-function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
+function EditorToolbar({
+  onRun,
+  onSubmit,
+  onReset,
+  isRunning,
+  isSubmitting,
+  onHint,
+  hasHints,
+}) {
+  const busy = isRunning || isSubmitting;
+
   return (
     <div className="editor-toolbar">
       <div className="editor-toolbar-left">
         <select
           className="editor-select"
           defaultValue="Java"
-          disabled={isRunning}
+          disabled={busy}
         >
           <option value="Java">Java</option>
         </select>
@@ -17,7 +27,7 @@ function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
           <button
             className="toolbar-btn toolbar-hint"
             onClick={onHint}
-            disabled={isRunning}
+            disabled={busy}
           >
             ✦ Hint
           </button>
@@ -26,7 +36,7 @@ function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
         <button
           className="toolbar-btn toolbar-reset"
           onClick={onReset}
-          disabled={isRunning}
+          disabled={busy}
         >
           ↺ Reset
         </button>
@@ -34,7 +44,7 @@ function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
         <button
           className="toolbar-btn toolbar-run"
           onClick={onRun}
-          disabled={isRunning}
+          disabled={busy}
         >
           {isRunning ? (
             <span className="run-btn-loading">
@@ -43,6 +53,21 @@ function EditorToolbar({ onRun, onReset, isRunning, onHint, hasHints }) {
             </span>
           ) : (
             "▸ Run"
+          )}
+        </button>
+
+        <button
+          className="toolbar-btn toolbar-submit"
+          onClick={onSubmit}
+          disabled={busy}
+        >
+          {isSubmitting ? (
+            <span className="run-btn-loading">
+              <span className="spinner" />
+              Submitting
+            </span>
+          ) : (
+            "✓ Submit"
           )}
         </button>
       </div>

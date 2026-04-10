@@ -11,7 +11,12 @@ Public API
   get_learning_summary(user_id)    -> dict
 """
 
-from database import get_all_topic_stats, count_submissions_for_user
+from database import (
+    count_submissions_for_user,
+    get_all_topic_stats,
+    get_error_counts_for_user,
+    get_submit_attempts_for_user,
+)
 
 # ---------------------------------------------------------------------------
 # Classification thresholds (single place to tune)
@@ -25,6 +30,28 @@ IMPROVING_REQUIRED_SUCCESS  = 3    # all of the window must be successful
 
 STRONG_MIN_SUCCESSES        = 8    # successful_attempts must reach this
 STRONG_MAX_ERROR_RATE       = 30   # error_rate (%) must stay below this
+
+# ---------------------------------------------------------------------------
+# Hint-weighted success rate
+# ---------------------------------------------------------------------------
+# A successful submission is rewarded less if the student needed hints
+# to get there. The weight curve is:
+#
+#     0 hints → 1.0     (full credit)
+#     1 hint  → 0.7
+#     2 hints → 0.4
+#     3 hints → 0.1
+#     4+      → 0.0     (clamped)
+#
+# Failures always contribute 0. success_rate is the average weighted
+# credit across all 'submit'-type attempts.
+
+HINT_WEIGHT_STEP = 0.3
+
+
+def _hint_weight(hints_used: int) -> float:
+    """Credit weight for a solved submission given how many hints were used."""
+    return max(0.0, 1.0 - HINT_WEIGHT_STEP * max(0, int(hints_used or 0)))
 
 
 # ---------------------------------------------------------------------------
@@ -144,9 +171,41 @@ def get_learning_summary(user_id: str) -> dict:
 
     total = count_submissions_for_user(user_id)
 
+    # ------------------------------------------------------------------
+    # Hint-weighted success rate  (submits only)
+    # ------------------------------------------------------------------
+    # We pull the 'submit'-type attempts and compute:
+    #   - successful_submissions : raw count of resolved submits
+    #   - success_rate           : average hint-weighted credit per submit
+    # Runs are excluded so accidental clicks on Run never inflate or
+    # deflate the mastery signal — only deliberate submits move the bar.
+    submit_attempts = get_submit_attempts_for_user(user_id)
+    total_submits = len(submit_attempts)
+    successful_submits = sum(1 for s in submit_attempts if s.get("resolved"))
+
+    if total_submits > 0:
+        weighted_credit = sum(
+            _hint_weight(s.get("hints_used", 0)) if s.get("resolved") else 0.0
+            for s in submit_attempts
+        )
+        success_rate = weighted_credit / total_submits
+    else:
+        success_rate = 0.0
+
+    # ------------------------------------------------------------------
+    # Error breakdown
+    # ------------------------------------------------------------------
+    # Count all failed attempts (runs + submits) by error_type. Populates
+    # the Progress page's "Error Breakdown" chart.
+    error_breakdown = get_error_counts_for_user(user_id)
+
     return {
-        "weak_topics":       weak,
-        "improving_topics":  improving,
-        "strong_topics":     strong,
-        "total_submissions": total,
+        "user_id":                user_id,
+        "weak_topics":            weak,
+        "improving_topics":       improving,
+        "strong_topics":          strong,
+        "total_submissions":      total,
+        "successful_submissions": successful_submits,
+        "success_rate":           round(success_rate, 4),
+        "error_breakdown":        error_breakdown,
     }

@@ -169,6 +169,24 @@ def submit_code():
     user_id: str = body["user_id"].strip()
     code:    str = body["code"].strip()
 
+    # Optional submission metadata. "run" = editor run button,
+    # "submit" = real submit attempt. Only submits feed topic_stats.
+    raw_type = str(body.get("submission_type") or "submit").strip().lower()
+    submission_type = raw_type if raw_type in ("run", "submit") else "submit"
+    problem_id = body.get("problem_id")
+    problem_title = body.get("problem_title")
+
+    # The frontend HintPanel is the source of truth for how many hint
+    # levels the student has actually revealed — it's echoed back here
+    # so the hint-weighted success rate on the Progress page discounts
+    # heavily-hinted wins. If the client doesn't send it we fall back
+    # to the hint_manager escalation level below.
+    client_hints_used = body.get("hints_used")
+    try:
+        client_hints_used = int(client_hints_used) if client_hints_used is not None else None
+    except (TypeError, ValueError):
+        client_hints_used = None
+
     # ------------------------------------------------------------------
     # 2. Execute Java code
     # ------------------------------------------------------------------
@@ -243,23 +261,36 @@ def submit_code():
 
     # ------------------------------------------------------------------
     # 6. Persist rich submission record + topic stats  (best-effort)
+    #    Write rules:
+    #      - submit         : always persist (success or failure)
+    #      - run + success  : skip entirely (no telemetry value, avoids
+    #                         spamming the event log on every run click)
+    #      - run + failure  : persist (error telemetry for Progress page)
     # ------------------------------------------------------------------
-    llm_response_text = json.dumps(hints) if hints else ""
-    submission_id = _safe_call(
-        "save_submission",
-        save_submission,
-        user_id=user_id,
-        code=code,
-        topic=detected_topic,
-        error_type=status,
-        error_message=error_message,
-        hints_used=current_hint_level,
-        resolved=resolved,
-        llm_response=llm_response_text,
-        hallucination_flag=hallucination_flag,
-        confidence_score=None,
-        user_feedback="not_given",
-    )
+    submission_id = None
+    if submission_type == "submit" or not resolved:
+        llm_response_text = json.dumps(hints) if hints else ""
+        effective_hints_used = (
+            client_hints_used if client_hints_used is not None else current_hint_level
+        )
+        submission_id = _safe_call(
+            "save_submission",
+            save_submission,
+            user_id=user_id,
+            code=code,
+            topic=detected_topic,
+            error_type=status,
+            error_message=error_message,
+            hints_used=effective_hints_used,
+            resolved=resolved,
+            llm_response=llm_response_text,
+            hallucination_flag=hallucination_flag,
+            confidence_score=None,
+            user_feedback="not_given",
+            submission_type=submission_type,
+            problem_id=problem_id,
+            problem_title=problem_title,
+        )
 
     # ------------------------------------------------------------------
     # 7. Encouragement message (after topic stats have been updated)

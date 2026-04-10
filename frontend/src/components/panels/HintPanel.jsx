@@ -2,13 +2,22 @@ import { useState, useEffect } from "react";
 
 const MAX_HINT_LEVEL = 3;
 
-function HintPanel({ hints, status, onClose }) {
+function HintPanel({ hints, status, onClose, onHintLevelChange }) {
   const [hintLevel, setHintLevel] = useState(1);
 
   // Reset hint level when new hints arrive
   useEffect(() => {
     setHintLevel(1);
   }, [hints]);
+
+  // Notify the parent every time the visible hint level changes so
+  // Practice can track the highest level the user has actually seen
+  // — that number feeds the hint-weighted success rate.
+  useEffect(() => {
+    if (hints && onHintLevelChange) {
+      onHintLevelChange(hintLevel);
+    }
+  }, [hintLevel, hints, onHintLevelChange]);
 
   // Close on Escape key
   useEffect(() => {
