@@ -97,6 +97,24 @@ def _http_status_for(execution_status: str) -> int:
     return HTTPStatus.REQUEST_TIMEOUT if execution_status == "Timeout" else HTTPStatus.OK
 
 
+def _normalize_output(text) -> str:
+    """
+    Line-wise whitespace normalization for output comparison.
+
+    Mirrors the frontend's `normalizeOutput` in Practice.jsx so a
+    submission verdict is consistent whether it's computed client-side
+    (for the banner) or server-side (to decide `resolved`). We strip
+    trailing whitespace on each line and drop trailing blank lines,
+    leaving intentional internal whitespace alone.
+    """
+    if text is None:
+        return ""
+    return "\n".join(
+        line.rstrip()
+        for line in str(text).replace("\r\n", "\n").split("\n")
+    ).rstrip("\n")
+
+
 def _safe_call(label: str, fn, *args, default=None, **kwargs):
     """
     Run a non-critical auxiliary call and swallow any exception.
@@ -176,6 +194,7 @@ def submit_code():
     problem_id = body.get("problem_id")
     problem_title = body.get("problem_title")
     problem_topic = body.get("problem_topic")  # canonical catalog topic
+    expected_output = body.get("expected_output")
 
     # The frontend HintPanel is the source of truth for how many hint
     # levels the student has actually revealed — it's echoed back here
@@ -206,13 +225,49 @@ def submit_code():
     resolved = status == "Success"
     error_message = result.get("error_message") or ""
 
+    # Expected-output guard (submit only).
+    # The JVM treats any cleanly-running program as "Success" — so a
+    # student who prints the wrong text would be marked as resolved.
+    # When the client sends `expected_output`, we compare it against the
+    # actual stdout (with the same line-wise whitespace normalization the
+    # frontend uses). A mismatch is NOT a Java error: we leave `status`
+    # and the response's execution block untouched (so the frontend's
+    # verdict banner and Output panel keep showing the actual program
+    # output), but we flip `resolved` to False so the Solved tile's
+    # numerator/denominator math stays honest. Hint generation, error
+    # breakdown, and topic_stats are all skipped further down for this
+    # case — wrong output isn't a concept error, just a failed attempt.
+    output_mismatch = False
+    if (
+        submission_type == "submit"
+        and resolved
+        and expected_output is not None
+    ):
+        actual_output = result.get("output") or ""
+        if _normalize_output(actual_output) != _normalize_output(expected_output):
+            output_mismatch = True
+            resolved = False
+
+    # Prefer the specific Java exception class ("ArithmeticException",
+    # "NullPointerException", ...) over the umbrella "RuntimeError"
+    # label so the Error Breakdown chart and the insight engine can
+    # key on concrete exception types. Wrong-output submissions get a
+    # dedicated marker so they can be filtered out of the chart.
+    if output_mismatch:
+        specific_error_type = "WrongOutput"
+    else:
+        specific_error_type = result.get("exception_type") or status
+
     # ------------------------------------------------------------------
     # 3. Hint generation with fallback pipeline
     # ------------------------------------------------------------------
     hints: Optional[dict] = None
     hallucination_flag = False
 
-    if not resolved:
+    # Skip hint generation for wrong-output submits — the program ran
+    # fine, there's no stack trace to explain, and the student just
+    # needs to re-check their logic against the expected output.
+    if not resolved and not output_mismatch:
         try:
             raw_hints = generate_hints(code=code, execution_result=result, hint_level=3)
             if raw_hints.get("status") == "LLMError":
@@ -280,7 +335,7 @@ def submit_code():
             user_id=user_id,
             code=code,
             topic=detected_topic,
-            error_type=status,
+            error_type=specific_error_type,
             error_message=error_message,
             hints_used=effective_hints_used,
             resolved=resolved,
@@ -292,6 +347,7 @@ def submit_code():
             problem_id=problem_id,
             problem_title=problem_title,
             problem_topic=problem_topic,
+            wrong_output=output_mismatch,
         )
 
     # ------------------------------------------------------------------

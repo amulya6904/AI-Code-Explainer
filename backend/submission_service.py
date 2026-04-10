@@ -116,6 +116,7 @@ def save_submission(
     problem_id: int = None,
     problem_title: str = None,
     problem_topic: str = None,
+    wrong_output: bool = False,
 ) -> str:
     """
     Persist a single Java submission and (for real submits only) update the
@@ -147,6 +148,12 @@ def save_submission(
                        Dashboard / Progress aggregation. Distinct from the
                        error-derived `topic` arg, which is only used for the
                        weak/improving/strong mastery signal.
+        wrong_output:  True when the program compiled and ran cleanly but
+                       printed the wrong result. We still insert the doc
+                       (so the Solved tile denominator counts the attempt)
+                       but skip the topic_stats mastery update — wrong
+                       output is a logic miss, not a concept error, and
+                       shouldn't push a topic toward "weak" status.
 
     Returns:
         The MongoDB _id string of the newly inserted submission document.
@@ -165,6 +172,7 @@ def save_submission(
         "error_message":   error_message,
         "hints_used":      hints_used,
         "resolved":        resolved,
+        "wrong_output":    bool(wrong_output),
         "llm_response":    llm_response,
         "hallucination_flag": hallucination_flag,
         "confidence_score": confidence_score,
@@ -178,9 +186,10 @@ def save_submission(
     submission_id = insert_submission(doc)
 
     # ------------------------------------------------------------------
-    # 2. Mastery signal: only real submits update topic_stats
+    # 2. Mastery signal: only real submits update topic_stats, and
+    #    never for wrong-output attempts (logic miss ≠ concept error).
     # ------------------------------------------------------------------
-    if normalized_type != "submit":
+    if normalized_type != "submit" or wrong_output:
         return submission_id
 
     # $inc counters based on whether this attempt was successful

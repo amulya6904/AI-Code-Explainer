@@ -1,19 +1,28 @@
 import { useMemo } from "react";
 import { useLearningSummary } from "../hooks/useLearningSummary";
 import { deriveInsight } from "../utils/insight";
-import { problems, TOPIC_ORDER } from "../data/problems";
+import { problems, problemsByTopic, TOPIC_ORDER } from "../data/problems";
 
 // ─── Helpers ─────────────────────────────────────────────────
-const STATUS_CLS = {
-  strong: "mastery-status--strong",
-  improving: "mastery-status--improving",
-  weak: "mastery-status--weak",
-};
 
-function classifyTopic(topicName, summary) {
-  if ((summary.strong_topics ?? []).includes(topicName)) return "strong";
-  if ((summary.improving_topics ?? []).includes(topicName)) return "improving";
-  return "weak";
+// A catalog topic is "mastered" when the user has solved every
+// problem in that topic at least once. The backend returns the
+// set of solved problem_ids per topic; we intersect against the
+// current catalog so mastery stays honest as problems are added
+// or removed.
+function countMasteredTopics(summary) {
+  const solvedByTopic = summary?.mastered_problem_ids_by_topic ?? {};
+  const grouped = problemsByTopic();
+  let mastered = 0;
+  for (const topic of TOPIC_ORDER) {
+    const catalogIds = (grouped[topic] ?? []).map((p) => p.id);
+    if (catalogIds.length === 0) continue;
+    const solvedIds = new Set(solvedByTopic[topic] ?? []);
+    if (catalogIds.every((id) => solvedIds.has(id))) {
+      mastered += 1;
+    }
+  }
+  return mastered;
 }
 
 // Merge backend topic_performance (only topics with attempts) with
@@ -101,6 +110,12 @@ function Progress({ setActivePage, setSelectedProblemId }) {
 
   const insight = useMemo(() => deriveInsight(summary), [summary]);
 
+  // Catalog-based mastery count: full topic = all problems solved.
+  const topicsMastered = useMemo(
+    () => countMasteredTopics(summary),
+    [summary]
+  );
+
   // Full catalog-topic row set, even for zero-submission users.
   const topicPerformance = useMemo(
     () => buildTopicPerformance(summary),
@@ -174,8 +189,6 @@ function Progress({ setActivePage, setSelectedProblemId }) {
   const streak                 = summary.streak ?? { current: 0, longest: 0 };
   const recent_submissions     = summary.recent_submissions ?? [];
   const error_breakdown        = summary.error_breakdown ?? [];
-  const strong_topics          = summary.strong_topics ?? [];
-  const weak_topics            = summary.weak_topics ?? [];
 
   return (
     <section className="page">
@@ -186,11 +199,12 @@ function Progress({ setActivePage, setSelectedProblemId }) {
       </div>
 
       {/* ─── AI Insight banner ─────────────────────── */}
-      <div className="insight-banner">
+      <div className={`insight-banner insight-banner--${insight.severity}`}>
         <div className="insight-banner__icon">✦</div>
         <div className="insight-banner__text">
           <div className="insight-banner__label">Codexa Insight</div>
-          <p className="insight-banner__body">{insight}</p>
+          <div className="insight-banner__headline">{insight.headline}</div>
+          <p className="insight-banner__body">{insight.detail}</p>
         </div>
       </div>
 
@@ -229,11 +243,8 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="stat-card__icon stat-card__icon--purple">◈</div>
           <div className="stat-card__label">Topics mastered</div>
           <div className="stat-card__value">
-            {strong_topics.length}
+            {topicsMastered}
             <span className="unit">/ {TOPIC_ORDER.length}</span>
-          </div>
-          <div className="stat-card__hint">
-            {weak_topics.length} need work
           </div>
         </div>
       </div>
@@ -245,33 +256,27 @@ function Progress({ setActivePage, setSelectedProblemId }) {
           <div className="card">
             <div className="progress-section-title">Topic Mastery</div>
             <div className="topic-mastery-list">
-              {topicPerformance.map((tp) => {
-                const status = classifyTopic(tp.topic, summary);
-                return (
-                  <div key={tp.topic} className="topic-mastery-item">
-                    <div className="topic-mastery-header">
-                      <span className="topic-mastery-name">{tp.topic}</span>
-                      <div className="topic-mastery-meta">
-                        <span className="topic-mastery-value">
-                          {pct(tp.accuracy)}
-                        </span>
-                        <span>
-                          {tp.successes}/{tp.attempts}
-                        </span>
-                        <span className={`mastery-status ${STATUS_CLS[status]}`}>
-                          {status}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="progress">
-                      <div
-                        className={`progress__fill ${progressFillClass(tp.accuracy)}`}
-                        style={{ width: `${Math.round(tp.accuracy * 100)}%` }}
-                      />
+              {topicPerformance.map((tp) => (
+                <div key={tp.topic} className="topic-mastery-item">
+                  <div className="topic-mastery-header">
+                    <span className="topic-mastery-name">{tp.topic}</span>
+                    <div className="topic-mastery-meta">
+                      <span className="topic-mastery-value">
+                        {pct(tp.accuracy)}
+                      </span>
+                      <span>
+                        {tp.successes}/{tp.attempts}
+                      </span>
                     </div>
                   </div>
-                );
-              })}
+                  <div className="progress">
+                    <div
+                      className={`progress__fill ${progressFillClass(tp.accuracy)}`}
+                      style={{ width: `${Math.round(tp.accuracy * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
 

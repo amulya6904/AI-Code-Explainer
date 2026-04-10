@@ -2114,10 +2114,57 @@
   margin-bottom: var(--space-1);
 }
 
-.insight-banner__body {
-  font-size: var(--fs-md);
+.insight-banner__headline {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
   color: var(--text-primary);
-  line-height: 1.55;
+  margin-bottom: var(--space-2);
+  line-height: 1.35;
+}
+
+.insight-banner__body {
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* Severity variants — visual weight tracks how urgent the advice is */
+.insight-banner--high {
+  background: linear-gradient(
+    135deg,
+    rgba(248, 113, 113, 0.12),
+    rgba(248, 113, 113, 0.04)
+  );
+  border-color: rgba(248, 113, 113, 0.35);
+}
+.insight-banner--high .insight-banner__label {
+  color: var(--danger);
+}
+.insight-banner--high .insight-banner__icon {
+  border-color: rgba(248, 113, 113, 0.45);
+  color: var(--danger);
+}
+
+.insight-banner--medium {
+  background: linear-gradient(
+    135deg,
+    rgba(251, 191, 36, 0.12),
+    rgba(251, 191, 36, 0.04)
+  );
+  border-color: rgba(251, 191, 36, 0.35);
+}
+.insight-banner--medium .insight-banner__label {
+  color: var(--warning);
+}
+.insight-banner--medium .insight-banner__icon {
+  border-color: rgba(251, 191, 36, 0.45);
+  color: var(--warning);
+}
+
+.insight-banner--low,
+.insight-banner--none {
+  /* Default cyan treatment already applied above — no override needed */
 }
 
 /* Topic mastery list */
@@ -2157,32 +2204,6 @@
 .topic-mastery-value {
   color: var(--text-primary);
   font-weight: var(--fw-semibold);
-}
-
-.mastery-status {
-  padding: 3px 8px;
-  border-radius: var(--radius-full);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  border: 1px solid transparent;
-}
-
-.mastery-status--strong {
-  color: var(--success);
-  background: var(--success-soft);
-  border-color: rgba(52, 211, 153, 0.25);
-}
-.mastery-status--improving {
-  color: var(--warning);
-  background: var(--warning-soft);
-  border-color: rgba(251, 191, 36, 0.25);
-}
-.mastery-status--weak {
-  color: var(--danger);
-  background: var(--danger-soft);
-  border-color: rgba(248, 113, 113, 0.25);
 }
 
 /* Activity feed */

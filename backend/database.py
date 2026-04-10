@@ -391,11 +391,55 @@ def get_topic_performance_for_user(user_id: str) -> list:
     return out
 
 
+def get_solved_problem_ids_by_topic(user_id: str) -> dict:
+    """
+    Return a map of catalog topic → list of distinct problem_ids the
+    user has successfully submitted at least once.
+
+    Used by the Dashboard/Progress "Topics mastered" tile: a topic is
+    considered mastered when every problem in that topic's catalog
+    entry has at least one resolved submit from this user.
+
+    Only submission_type == 'submit' (or legacy docs without the
+    field) count — a run that happened to compile doesn't mark a
+    problem as solved.
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id":  user_id,
+                "resolved": True,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+                "problem_topic": {"$nin": [None, ""]},
+                "problem_id":    {"$ne": None},
+            }
+        },
+        {
+            "$group": {
+                "_id":         "$problem_topic",
+                "problem_ids": {"$addToSet": "$problem_id"},
+            }
+        },
+    ]
+    return {
+        doc["_id"]: sorted(doc["problem_ids"])
+        for doc in submissions_col().aggregate(pipeline)
+    }
+
+
 def get_error_counts_for_user(user_id: str) -> list:
     """
     Aggregate non-success submissions by error_type for a given user.
     Counts both runs and submits (the Progress page wants all error
     telemetry), so failed runs still show up in the breakdown.
+
+    Wrong-output submits are excluded: they're flagged with
+    `wrong_output: true` and a dedicated `"WrongOutput"` error_type,
+    and aren't concept errors — they shouldn't pollute the Error
+    Breakdown chart or the insight engine's dominant-error signal.
 
     Returns a list of {"type": str, "count": int} sorted by count desc.
     """
@@ -404,7 +448,8 @@ def get_error_counts_for_user(user_id: str) -> list:
             "$match": {
                 "user_id": user_id,
                 "resolved": False,
-                "error_type": {"$nin": [None, "", "Success"]},
+                "wrong_output": {"$ne": True},
+                "error_type": {"$nin": [None, "", "Success", "WrongOutput"]},
             }
         },
         {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},

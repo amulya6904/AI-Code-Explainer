@@ -167,6 +167,11 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
       setStatus("Submitting...");
       resetFeedback();
 
+      // Send expectedOutput so the backend can downgrade a
+      // cleanly-running-but-wrong-output submission to resolved=False.
+      // Without this, the backend's `status == "Success"` check would
+      // mark any program that didn't crash as solved, inflating the
+      // Solved tile on Progress.
       const res = await submitCode({
         user_id: "demo_user",
         code,
@@ -175,6 +180,7 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         problem_title: problem.title,
         problem_topic: problem.topic,
         hints_used: hintsUsed,
+        expected_output: problem.expectedOutput,
       });
 
       const unpacked = unpackResponse(res);

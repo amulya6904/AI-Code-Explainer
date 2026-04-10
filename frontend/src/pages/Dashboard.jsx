@@ -115,7 +115,16 @@ function Dashboard({ setActivePage, setSelectedProblemId }) {
   const totalSolved   = summary?.successful_submissions ?? 0;
   const totalSubs     = summary?.total_submissions ?? 0;
   const successPct    = Math.round((summary?.success_rate ?? 0) * 100);
-  const topicsMastered = summary?.strong_topics?.length ?? 0;
+
+  // A catalog topic is "mastered" when the user has solved every
+  // problem in it. Same rule as the Progress page's tile.
+  const solvedByTopic = summary?.mastered_problem_ids_by_topic ?? {};
+  const topicsMastered = TOPIC_ORDER.reduce((count, topic) => {
+    const catalogIds = (grouped[topic] ?? []).map((p) => p.id);
+    if (catalogIds.length === 0) return count;
+    const solvedIds = new Set(solvedByTopic[topic] ?? []);
+    return catalogIds.every((id) => solvedIds.has(id)) ? count + 1 : count;
+  }, 0);
 
   // Build topic stats from topic_performance so each topic card has a ring
   const topicStats = TOPIC_ORDER.map((topic) => {
