@@ -7,10 +7,12 @@ Collections:
   - users          : registered student profiles
   - submissions    : every Java code submission + error details
   - topic_stats    : per-user, per-topic learning performance counters
+  - hint_state     : progressive hint escalation state per (user, code)
 """
 
 import os
 
+import certifi
 from dotenv import load_dotenv
 from pymongo import MongoClient, ASCENDING, DESCENDING
 from pymongo.errors import PyMongoError
@@ -41,7 +43,9 @@ def get_db():
             raise RuntimeError(message)
 
         try:
-            _client = MongoClient(MONGO_URI)
+            # tlsCAFile=certifi.where() is required on Windows so MongoDB Atlas
+            # TLS handshakes succeed against the bundled CA store.
+            _client = MongoClient(MONGO_URI, tlsCAFile=certifi.where())
             _client.admin.command("ping")
             _db = _client[DB_NAME]
             _ensure_indexes(_db)
@@ -63,6 +67,12 @@ def _ensure_indexes(db):
     db.topic_stats.create_index(
         [("user_id", ASCENDING), ("topic", ASCENDING)], unique=True
     )
+    # hint_state: unique per (user, code_hash) for progressive hint escalation
+    db.hint_state.create_index(
+        [("user_id", ASCENDING), ("code_hash", ASCENDING)],
+        unique=True,
+        name="user_code_unique",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +92,11 @@ def submissions_col():
 def topic_stats_col():
     """Return the `topic_stats` collection."""
     return get_db().topic_stats
+
+
+def hint_state_col():
+    """Return the `hint_state` collection."""
+    return get_db().hint_state
 
 
 # ---------------------------------------------------------------------------
@@ -231,6 +246,219 @@ def get_submissions_for_user(user_id: str, limit: int = 100) -> list:
 def count_submissions_for_user(user_id: str) -> int:
     """Return total number of submissions made by a user."""
     return submissions_col().count_documents({"user_id": user_id})
+
+
+def get_recent_submissions_for_user(user_id: str, limit: int = 8) -> list:
+    """
+    Return the newest `limit` submit-type submissions for a user,
+    projected into the shape the Progress page's "Recent Activity"
+    feed expects:
+
+      {
+        "id":            str  (MongoDB _id),
+        "problem_id":    int | None,
+        "problem_title": str,
+        "status":        "Success" | <error_type>,
+        "topic":         str  (catalog topic, falls back to detected),
+        "timestamp":     str  (ISO-8601)
+      }
+
+    Runs are excluded — the feed is a log of real attempts, not every
+    click of the editor's Run button.
+    """
+    cursor = (
+        submissions_col()
+        .find(
+            {
+                "user_id": user_id,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+            }
+        )
+        .sort("timestamp", DESCENDING)
+        .limit(limit)
+    )
+
+    feed = []
+    for doc in cursor:
+        resolved = bool(doc.get("resolved"))
+        error_type = doc.get("error_type") or "Error"
+        ts = doc.get("timestamp")
+        feed.append({
+            "id":            str(doc.get("_id")),
+            "problem_id":    doc.get("problem_id"),
+            "problem_title": doc.get("problem_title") or "Untitled problem",
+            "status":        "Success" if resolved else error_type,
+            "topic":         doc.get("problem_topic")
+                              or doc.get("detected_topic")
+                              or "general",
+            "timestamp":     ts.isoformat() if ts else None,
+        })
+    return feed
+
+
+def get_submit_attempts_for_user(user_id: str) -> list:
+    """
+    Return the minimal fields needed to compute hint-weighted mastery
+    metrics: only documents where submission_type == 'submit'.
+
+    Older docs written before the submission_type field existed are
+    treated as submits (the field is absent → missing == 'submit').
+    """
+    cursor = submissions_col().find(
+        {
+            "user_id": user_id,
+            "$or": [
+                {"submission_type": "submit"},
+                {"submission_type": {"$exists": False}},
+            ],
+        },
+        {"resolved": 1, "hints_used": 1, "detected_topic": 1, "error_type": 1},
+    )
+    return list(cursor)
+
+
+def get_active_dates_for_user(user_id: str) -> list:
+    """
+    Return the sorted list of YYYY-MM-DD strings on which the user
+    made at least one submission. Used by the streak calculator and
+    the activity calendar card on the Dashboard.
+    """
+    pipeline = [
+        {"$match": {"user_id": user_id}},
+        {
+            "$group": {
+                "_id": {
+                    "$dateToString": {
+                        "format": "%Y-%m-%d",
+                        "date":   "$timestamp",
+                    }
+                }
+            }
+        },
+        {"$sort": {"_id": 1}},
+    ]
+    return [doc["_id"] for doc in submissions_col().aggregate(pipeline)]
+
+
+def get_topic_performance_for_user(user_id: str) -> list:
+    """
+    Aggregate per-catalog-topic submit attempts for a user.
+
+    Groups by `problem_topic` (the frontend's canonical topic name, e.g.
+    'Java Basics', 'Loops'), NOT the error-derived `detected_topic`.
+    This keeps the Dashboard topic cards aligned with the problem
+    catalog, while leaving room for the error-level mastery signal.
+
+    Only submission_type == 'submit' (or legacy docs without the field)
+    are counted, so accidental Run clicks don't skew accuracy.
+
+    Returns a list of:
+      {"topic": str, "attempts": int, "successes": int, "accuracy": float}
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id": user_id,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+                "problem_topic": {"$nin": [None, ""]},
+            }
+        },
+        {
+            "$group": {
+                "_id": "$problem_topic",
+                "attempts":  {"$sum": 1},
+                "successes": {"$sum": {"$cond": ["$resolved", 1, 0]}},
+            }
+        },
+    ]
+
+    out = []
+    for doc in submissions_col().aggregate(pipeline):
+        attempts = doc["attempts"]
+        successes = doc["successes"]
+        out.append({
+            "topic":     doc["_id"],
+            "attempts":  attempts,
+            "successes": successes,
+            "accuracy":  (successes / attempts) if attempts else 0.0,
+        })
+    return out
+
+
+def get_solved_problem_ids_by_topic(user_id: str) -> dict:
+    """
+    Return a map of catalog topic → list of distinct problem_ids the
+    user has successfully submitted at least once.
+
+    Used by the Dashboard/Progress "Topics mastered" tile: a topic is
+    considered mastered when every problem in that topic's catalog
+    entry has at least one resolved submit from this user.
+
+    Only submission_type == 'submit' (or legacy docs without the
+    field) count — a run that happened to compile doesn't mark a
+    problem as solved.
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id":  user_id,
+                "resolved": True,
+                "$or": [
+                    {"submission_type": "submit"},
+                    {"submission_type": {"$exists": False}},
+                ],
+                "problem_topic": {"$nin": [None, ""]},
+                "problem_id":    {"$ne": None},
+            }
+        },
+        {
+            "$group": {
+                "_id":         "$problem_topic",
+                "problem_ids": {"$addToSet": "$problem_id"},
+            }
+        },
+    ]
+    return {
+        doc["_id"]: sorted(doc["problem_ids"])
+        for doc in submissions_col().aggregate(pipeline)
+    }
+
+
+def get_error_counts_for_user(user_id: str) -> list:
+    """
+    Aggregate non-success submissions by error_type for a given user.
+    Counts both runs and submits (the Progress page wants all error
+    telemetry), so failed runs still show up in the breakdown.
+
+    Wrong-output submits are excluded: they're flagged with
+    `wrong_output: true` and a dedicated `"WrongOutput"` error_type,
+    and aren't concept errors — they shouldn't pollute the Error
+    Breakdown chart or the insight engine's dominant-error signal.
+
+    Returns a list of {"type": str, "count": int} sorted by count desc.
+    """
+    pipeline = [
+        {
+            "$match": {
+                "user_id": user_id,
+                "resolved": False,
+                "wrong_output": {"$ne": True},
+                "error_type": {"$nin": [None, "", "Success", "WrongOutput"]},
+            }
+        },
+        {"$group": {"_id": "$error_type", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    return [
+        {"type": doc["_id"], "count": doc["count"]}
+        for doc in submissions_col().aggregate(pipeline)
+    ]
 
 
 # ---------------------------------------------------------------------------

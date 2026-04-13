@@ -51,55 +51,32 @@ reset_hint_level(user_id, code) → None
 
 import hashlib
 import logging
-import os
 from datetime import datetime, timezone
-from typing import Optional
 
-from pymongo import ASCENDING, MongoClient
 from pymongo.collection import Collection
 from pymongo.errors import PyMongoError
+
+from database import hint_state_col
 
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Configuration  (override via environment variables)
+# Configuration
 # ---------------------------------------------------------------------------
-
-MONGO_URI:       str = os.getenv("MONGO_URI",       "mongodb://localhost:27017")
-MONGO_DB_NAME:   str = os.getenv("MONGO_DB_NAME",   "java_tutor")
-HINT_STATE_COLL: str = os.getenv("HINT_STATE_COLL", "hint_state")
 
 # Maximum hint level — raising this constant is the only change needed to
 # add more hint tiers in future.
 MAX_HINT_LEVEL: int = 3
 
-# ---------------------------------------------------------------------------
-# Lazy singleton client
-# ---------------------------------------------------------------------------
-
-_client: Optional[MongoClient] = None
-
 
 def _get_collection() -> Collection:
     """
-    Return the hint_state collection, creating the MongoClient on first call.
+    Return the hint_state collection via the shared database.py connection.
 
-    Also ensures a compound unique index on (user_id, code_hash) exists so
-    that concurrent requests for the same user+code pair cannot create
-    duplicate documents.
+    The unique (user_id, code_hash) index is ensured inside database._ensure_indexes
+    so this function is just a thin accessor.
     """
-    global _client
-    if _client is None:
-        _client = MongoClient(MONGO_URI)
-        _client[MONGO_DB_NAME][HINT_STATE_COLL].create_index(
-            [("user_id", ASCENDING), ("code_hash", ASCENDING)],
-            unique=True,
-            name="user_code_unique",
-        )
-        logger.info(
-            "hint_state collection ready → %s / %s", MONGO_URI, MONGO_DB_NAME
-        )
-    return _client[MONGO_DB_NAME][HINT_STATE_COLL]
+    return hint_state_col()
 
 
 # ---------------------------------------------------------------------------

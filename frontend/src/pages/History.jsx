@@ -47,7 +47,14 @@ function History({ attempts }) {
               <div className="history-section">
                 <h4>Hint</h4>
                 <div className="history-hint">
-                  {attempt.hint || "No hint available."}
+                  {attempt.hints ? (
+                    <>
+                      {attempt.hints.problem_summary && <div><strong>Problem:</strong> {attempt.hints.problem_summary}</div>}
+                      {attempt.hints.hint_1 && <div>Hint 1: {attempt.hints.hint_1}</div>}
+                      {attempt.hints.hint_2 && <div>Hint 2: {attempt.hints.hint_2}</div>}
+                      {attempt.hints.hint_3 && <div>Hint 3: {attempt.hints.hint_3}</div>}
+                    </>
+                  ) : "No hint available."}
                 </div>
               </div>
             </div>

@@ -3,13 +3,15 @@ import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
+import { problems } from "./data/problems";
+import "./styles/theme.css";
 import "./styles/globals.css";
 import "./styles/layout.css";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [attempts, setAttempts] = useState([]);
-  const [selectedQuestion, setSelectedQuestion] = useState("Two Sum");
+  const [selectedProblemId, setSelectedProblemId] = useState(problems[0].id);
 
   return (
     <div className="app-shell">
@@ -20,14 +22,22 @@ function App() {
         {activePage === "Dashboard" && (
           <Dashboard
             setActivePage={setActivePage}
-            setSelectedQuestion={setSelectedQuestion}
-            attempts={attempts}
+            setSelectedProblemId={setSelectedProblemId}
           />
         )}
         {activePage === "Practice" && (
-          <Practice attempts={attempts} setAttempts={setAttempts} />
+          <Practice
+            attempts={attempts}
+            setAttempts={setAttempts}
+            selectedProblemId={selectedProblemId}
+          />
         )}
-        {activePage === "Progress" && <Progress attempts={attempts} />}
+        {activePage === "Progress" && (
+          <Progress
+            setActivePage={setActivePage}
+            setSelectedProblemId={setSelectedProblemId}
+          />
+        )}
       </main>
     </div>
   );

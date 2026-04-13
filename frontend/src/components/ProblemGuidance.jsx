@@ -1,35 +1,43 @@
-import React from "react";
-
 function ProblemGuidance({ problem }) {
   if (!problem) {
     return (
       <div className="problem-guidance">
-        <h2>Problem / Guidance</h2>
-        <p>No problem selected.</p>
+        <h2>Problem</h2>
+        <div className="empty-state">
+          <div className="empty-state__icon">?</div>
+          <div className="empty-state__text">No problem selected.</div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="problem-guidance">
-      <h2>Problem / Guidance</h2>
+      <h2>Problem · Guidance</h2>
 
       <div className="problem-header">
         <h3>
-          {problem.id}. {problem.title}
+          {String(problem.id).padStart(2, "0")}. {problem.title}
         </h3>
-        <p>
-          <strong>{problem.status}</strong> | <strong>{problem.difficulty}</strong>
-        </p>
-        <p>
-          <strong>Topics:</strong> {problem.topics.join(", ")}
-        </p>
+        <div className="problem-meta-row">
+          <span className={`badge badge--${problem.difficulty.toLowerCase()}`}>
+            {problem.difficulty}
+          </span>
+          <span className="badge badge--cyan">{problem.topic}</span>
+          {problem.topics
+            .filter((t) => t !== problem.topic)
+            .map((tag) => (
+              <span key={tag} className="badge badge--purple">
+                {tag}
+              </span>
+            ))}
+        </div>
       </div>
 
       <div className="problem-section-block">
         <p>{problem.description}</p>
-        <p>{problem.note1}</p>
-        <p>{problem.note2}</p>
+        {problem.note1 && <p>{problem.note1}</p>}
+        {problem.note2 && <p>{problem.note2}</p>}
       </div>
 
       <div className="problem-section-block">
@@ -37,7 +45,7 @@ function ProblemGuidance({ problem }) {
         {problem.examples.map((example, index) => (
           <div key={index} className="example-card">
             <p>
-              <strong>{example.label}:</strong>
+              <strong>{example.label}</strong>
             </p>
             <p>
               <strong>Input:</strong> {example.input}

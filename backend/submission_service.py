@@ -112,15 +112,20 @@ def save_submission(
     hallucination_flag: bool = False,
     confidence_score: float = None,
     user_feedback: str = "not_given",
+    submission_type: str = "submit",
+    problem_id: int = None,
+    problem_title: str = None,
+    problem_topic: str = None,
+    wrong_output: bool = False,
 ) -> str:
     """
-    Persist a single Java submission and update the user's topic statistics.
+    Persist a single Java submission and (for real submits only) update the
+    user's topic statistics.
 
-    Steps:
-      1. Insert a document into the `submissions` collection.
-      2. Increment total_errors or successful_attempts in `topic_stats`.
-      3. Append the attempt outcome to recent_attempts (kept to last 10).
-      4. Recalculate and persist the topic status label.
+    Write rules:
+      - submission_type == "submit" : insert the doc AND refresh topic_stats.
+      - submission_type == "run"    : insert the doc only (mastery signal is
+                                      reserved for real submits).
 
     Args:
         user_id:       String identifier of the student.
@@ -134,33 +139,59 @@ def save_submission(
         hallucination_flag: True if the response was incorrect/misleading.
         confidence_score: Confidence score in range [0, 1] from validator.
         user_feedback: One of 'correct', 'incorrect', 'not_given'.
+        submission_type: "run" | "submit". Topic stats update only when
+                         this is "submit".
+        problem_id:    Catalog id of the problem being attempted (submit only).
+        problem_title: Human-readable problem title (submit only).
+        problem_topic: Canonical catalog topic (e.g. "Java Basics", "Loops").
+                       This is the *frontend* topic name and is used for all
+                       Dashboard / Progress aggregation. Distinct from the
+                       error-derived `topic` arg, which is only used for the
+                       weak/improving/strong mastery signal.
+        wrong_output:  True when the program compiled and ran cleanly but
+                       printed the wrong result. We still insert the doc
+                       (so the Solved tile denominator counts the attempt)
+                       but skip the topic_stats mastery update — wrong
+                       output is a logic miss, not a concept error, and
+                       shouldn't push a topic toward "weak" status.
 
     Returns:
         The MongoDB _id string of the newly inserted submission document.
     """
     # ------------------------------------------------------------------
-    # 1. Store the submission
+    # 1. Store the submission (always — runs too, for error telemetry)
     # ------------------------------------------------------------------
     now = datetime.utcnow()
+    normalized_type = submission_type if submission_type in ("run", "submit") else "submit"
+
     doc = {
-        "user_id":        user_id,
-        "code":           code,
-        "detected_topic": topic,
-        "error_type":     error_type,
-        "error_message":  error_message,
-        "hints_used":     hints_used,
-        "resolved":       resolved,
-        "llm_response":   llm_response,
+        "user_id":         user_id,
+        "code":            code,
+        "detected_topic":  topic,
+        "error_type":      error_type,
+        "error_message":   error_message,
+        "hints_used":      hints_used,
+        "resolved":        resolved,
+        "wrong_output":    bool(wrong_output),
+        "llm_response":    llm_response,
         "hallucination_flag": hallucination_flag,
         "confidence_score": confidence_score,
-        "user_feedback":  user_feedback,
-        "timestamp":      now,
+        "user_feedback":   user_feedback,
+        "submission_type": normalized_type,
+        "problem_id":      problem_id,
+        "problem_title":   problem_title,
+        "problem_topic":   problem_topic,
+        "timestamp":       now,
     }
     submission_id = insert_submission(doc)
 
     # ------------------------------------------------------------------
-    # 2 & 3. Update topic statistics atomically
+    # 2. Mastery signal: only real submits update topic_stats, and
+    #    never for wrong-output attempts (logic miss ≠ concept error).
     # ------------------------------------------------------------------
+    if normalized_type != "submit" or wrong_output:
+        return submission_id
+
     # $inc counters based on whether this attempt was successful
     inc_fields = {"total_errors": 0, "successful_attempts": 0}
     if resolved:
@@ -185,9 +216,7 @@ def save_submission(
         }
     )
 
-    # ------------------------------------------------------------------
-    # 4. Recalculate and persist the status label
-    # ------------------------------------------------------------------
+    # Recalculate and persist the status label
     _refresh_topic_status(user_id, topic)
 
     return submission_id

@@ -365,6 +365,9 @@ def execute_java_code(code: str) -> dict:
         if not compile_result.success:
             # Merge stderr + stdout in case javac splits its output.
             raw_error = (compile_result.stderr or compile_result.stdout).strip()
+            # Strip the sandbox path so the user sees "Main.java:3:" not
+            # "C:\Users\...\java_exec\<uuid>\Main.java:3:"
+            raw_error = raw_error.replace(sandbox + os.sep, "")
             return {
                 "status":        "CompilationError",
                 "error_message": raw_error,
@@ -390,10 +393,9 @@ def execute_java_code(code: str) -> dict:
         # A non-zero exit code, or any text on stderr, signals a runtime fault.
         if run_result.returncode != 0 or stderr:
             exception_type, line_number = _parse_runtime_exception(stderr)
-            first_line = stderr.splitlines()[0] if stderr else "Runtime error"
             return {
                 "status":         "RuntimeError",
-                "error_message":  first_line,
+                "error_message":  stderr if stderr else "Runtime error",
                 "exception_type": exception_type,
                 "line_number":    line_number,
                 "output":         stdout if stdout else None,

@@ -1,212 +1,394 @@
-function Progress({ attempts }) {
-  const total = attempts.length;
-  const successCount = attempts.filter((a) => a.status === "Success").length;
+import { useMemo } from "react";
+import { useLearningSummary } from "../hooks/useLearningSummary";
+import { deriveInsight } from "../utils/insight";
+import { problems, problemsByTopic, TOPIC_ORDER } from "../data/problems";
 
-  const successRate =
-    total > 0 ? ((successCount / total) * 100).toFixed(1) : 0;
+// ─── Helpers ─────────────────────────────────────────────────
 
-  let insight = "";
+// A catalog topic is "mastered" when the user has solved every
+// problem in that topic at least once. The backend returns the
+// set of solved problem_ids per topic; we intersect against the
+// current catalog so mastery stays honest as problems are added
+// or removed.
+function countMasteredTopics(summary) {
+  const solvedByTopic = summary?.mastered_problem_ids_by_topic ?? {};
+  const grouped = problemsByTopic();
+  let mastered = 0;
+  for (const topic of TOPIC_ORDER) {
+    const catalogIds = (grouped[topic] ?? []).map((p) => p.id);
+    if (catalogIds.length === 0) continue;
+    const solvedIds = new Set(solvedByTopic[topic] ?? []);
+    if (catalogIds.every((id) => solvedIds.has(id))) {
+      mastered += 1;
+    }
+  }
+  return mastered;
+}
 
-  if (total === 0) {
-    insight = "Start practicing to unlock personalized insights.";
-  } else if (successRate >= 80) {
-    insight = "You're performing exceptionally well. Keep pushing forward!";
-  } else if (successRate >= 50) {
-    insight = "You're making solid progress. Focus on consistency.";
-  } else {
-    insight = "Strengthen your fundamentals and keep practicing.";
+// Merge backend topic_performance (only topics with attempts) with
+// the canonical TOPIC_ORDER so the Progress page always shows every
+// catalog topic, even for a brand-new user with zero submissions.
+function buildTopicPerformance(summary) {
+  const byTopic = new Map();
+  for (const tp of summary?.topic_performance ?? []) {
+    byTopic.set(tp.topic, tp);
+  }
+  return TOPIC_ORDER.map(
+    (topic) =>
+      byTopic.get(topic) ?? {
+        topic,
+        attempts: 0,
+        successes: 0,
+        accuracy: 0,
+      }
+  );
+}
+
+// Backend recommendations are topic-only (e.g. {topic: "Loops", reason: "..."}).
+// The Progress UI expects a concrete problem to click into, so we join
+// each recommended topic against the catalog and pick the first
+// unsolved-looking problem (falling back to any problem in the topic).
+function enrichRecommendations(rawRecs, recentSubmissions) {
+  const solvedIds = new Set(
+    (recentSubmissions ?? [])
+      .filter((s) => s.status === "Success")
+      .map((s) => s.problem_id)
+  );
+
+  const enriched = [];
+  const used = new Set();
+
+  for (const rec of rawRecs ?? []) {
+    const topicProblems = problems.filter((p) => p.topic === rec.topic);
+    if (topicProblems.length === 0) continue;
+
+    const pick =
+      topicProblems.find((p) => !solvedIds.has(p.id) && !used.has(p.id)) ??
+      topicProblems.find((p) => !used.has(p.id)) ??
+      topicProblems[0];
+
+    used.add(pick.id);
+    enriched.push({
+      problem_id: pick.id,
+      title:      pick.title,
+      topic:      pick.topic,
+      difficulty: pick.difficulty,
+      reason:     rec.reason,
+    });
+  }
+  return enriched;
+}
+
+function pct(value) {
+  return `${Math.round(value * 100)}%`;
+}
+
+function progressFillClass(accuracy) {
+  if (accuracy >= 0.75) return "progress__fill--success";
+  if (accuracy >= 0.5) return "progress__fill--warning";
+  return "progress__fill--danger";
+}
+
+function formatRelativeTime(isoString) {
+  if (!isoString) return "";
+  const then = new Date(isoString);
+  const now = Date.now();
+  const diff = now - then.getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return then.toLocaleDateString();
+}
+
+// ─── Component ───────────────────────────────────────────────
+function Progress({ setActivePage, setSelectedProblemId }) {
+  const { summary, status, reload } = useLearningSummary("demo_user");
+
+  const insight = useMemo(() => deriveInsight(summary), [summary]);
+
+  // Catalog-based mastery count: full topic = all problems solved.
+  const topicsMastered = useMemo(
+    () => countMasteredTopics(summary),
+    [summary]
+  );
+
+  // Full catalog-topic row set, even for zero-submission users.
+  const topicPerformance = useMemo(
+    () => buildTopicPerformance(summary),
+    [summary]
+  );
+
+  // Problem-level recommendations joined from the backend topic hints.
+  const enrichedRecommendations = useMemo(
+    () =>
+      enrichRecommendations(
+        summary?.recommendations,
+        summary?.recent_submissions
+      ),
+    [summary]
+  );
+
+  const maxErrorCount = useMemo(() => {
+    const breakdown = summary?.error_breakdown ?? [];
+    return Math.max(...breakdown.map((e) => e.count), 1);
+  }, [summary]);
+
+  const openProblem = (problemId) => {
+    if (setSelectedProblemId && setActivePage) {
+      setSelectedProblemId(problemId);
+      setActivePage("Practice");
+    }
+  };
+
+  if (status === "loading") {
+    return (
+      <section className="page">
+        <div className="page-header">
+          <span className="eyebrow">Learning analytics</span>
+          <h2>Your Progress</h2>
+        </div>
+        <div className="fetch-state fetch-state--loading">
+          <div className="fetch-state__spinner" />
+          <div className="fetch-state__title">Loading your learning analytics…</div>
+          <div className="fetch-state__text">
+            Pulling your latest submissions from the backend.
+          </div>
+        </div>
+      </section>
+    );
   }
 
-  const easy = 80;
-  const medium = 60;
-  const hard = 30;
+  if (status === "error" || !summary) {
+    return (
+      <section className="page">
+        <div className="page-header">
+          <span className="eyebrow">Learning analytics</span>
+          <h2>Your Progress</h2>
+        </div>
+        <div className="fetch-state fetch-state--error">
+          <div className="fetch-state__icon">!</div>
+          <div className="fetch-state__title">Couldn't reach the backend</div>
+          <div className="fetch-state__text">
+            Check that the Flask server is running on port 5000, then retry.
+          </div>
+          <button className="fetch-state__retry" onClick={reload}>
+            Retry
+          </button>
+        </div>
+      </section>
+    );
+  }
 
-  const topics = [
-    { name: "Loops", value: 75, color: "#4f46e5" },
-    { name: "Arrays", value: 55, color: "#10b981" },
-    { name: "Conditions", value: 85, color: "#f59e0b" },
-    { name: "OOP", value: 40, color: "#ef4444" },
-  ];
-
-  const card = {
-    padding: "24px",
-    borderRadius: "16px",
-    background: "#ffffff",
-    boxShadow: "0 8px 25px rgba(0,0,0,0.06)",
-  };
-
-  const title = {
-    fontSize: "16px",
-    fontWeight: "600",
-    marginBottom: "12px",
-    color: "#374151",
-  };
-
-  const section = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-    gap: "20px",
-    marginTop: "20px",
-  };
+  const total_submissions      = summary.total_submissions ?? 0;
+  const successful_submissions = summary.successful_submissions ?? 0;
+  const success_rate           = summary.success_rate ?? 0;
+  const streak                 = summary.streak ?? { current: 0, longest: 0 };
+  const recent_submissions     = summary.recent_submissions ?? [];
+  const error_breakdown        = summary.error_breakdown ?? [];
 
   return (
-    <section className="page" style={{ padding: "30px", background: "#f1f5f9" }}>
-      {/* HEADER */}
-      <div style={{ marginBottom: "25px" }}>
-        <h2 style={{ fontSize: "28px", fontWeight: "700", color: "#1e293b" }}>
-          📊 Progress Dashboard
-        </h2>
-        <p style={{ color: "#64748b" }}>
-          Track your learning and improve consistently.
-        </p>
+    <section className="page">
+      <div className="page-header">
+        <span className="eyebrow">Learning analytics</span>
+        <h2>Your Progress</h2>
+        <p>A living portrait of how you learn, where you excel, and what to tackle next.</p>
       </div>
 
-      {/* AI INSIGHT */}
-      <div
-        style={{
-          ...card,
-          background: "linear-gradient(135deg, #6366f1, #9333ea)",
-          color: "white",
-        }}
-      >
-        <h3 style={{ fontSize: "18px", fontWeight: "600" }}>🧠 AI Insight</h3>
-        <p style={{ marginTop: "10px", opacity: 0.9 }}>{insight}</p>
+      {/* ─── AI Insight banner ─────────────────────── */}
+      <div className={`insight-banner insight-banner--${insight.severity}`}>
+        <div className="insight-banner__icon">✦</div>
+        <div className="insight-banner__text">
+          <div className="insight-banner__label">Codexa Insight</div>
+          <div className="insight-banner__headline">{insight.headline}</div>
+          <p className="insight-banner__body">{insight.detail}</p>
+        </div>
       </div>
 
-      {/* GRID */}
-      <div style={section}>
-        {/* STREAK */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#6366f1" }}>🔥 Coding Streak</h3>
-          <h2 style={{ fontSize: "36px", fontWeight: "700", color: "#6366f1" }}>
-            {total}
-          </h2>
-          <p style={{ color: "#6b7280" }}>Sessions completed</p>
+      {/* ─── Stat grid ─────────────────────────────── */}
+      <div className="progress-grid">
+        <div className="stat-card">
+          <div className="stat-card__icon stat-card__icon--cyan">⚡</div>
+          <div className="stat-card__label">Total submissions</div>
+          <div className="stat-card__value">{total_submissions}</div>
+          <div className="stat-card__hint">Across all problems</div>
         </div>
 
-        {/* SUCCESS RATE */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#10b981" }}>✅ Success Rate</h3>
-          <h2 style={{ fontSize: "36px", fontWeight: "700", color: "#10b981" }}>
-            {successRate}%
-          </h2>
-          <p style={{ color: "#6b7280" }}>Overall performance</p>
+        <div className="stat-card">
+          <div className="stat-card__icon stat-card__icon--success">✓</div>
+          <div className="stat-card__label">Solved</div>
+          <div className="stat-card__value">
+            {successful_submissions}
+            <span className="unit">/ {total_submissions}</span>
+          </div>
+          <div className="stat-card__hint stat-card__trend-up">
+            {pct(success_rate)} success rate
+          </div>
         </div>
 
-        {/* DIFFICULTY */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#f59e0b" }}>📈 Difficulty Progress</h3>
+        <div className="stat-card">
+          <div className="stat-card__icon stat-card__icon--warning">🔥</div>
+          <div className="stat-card__label">Current streak</div>
+          <div className="stat-card__value">
+            {streak.current}
+            <span className="unit">days</span>
+          </div>
+          <div className="stat-card__hint">Best · {streak.longest} days</div>
+        </div>
 
-          {[
-            { label: "Easy", value: easy, color: "#22c55e" },
-            { label: "Medium", value: medium, color: "#f59e0b" },
-            { label: "Hard", value: hard, color: "#ef4444" },
-          ].map((item) => (
-            <div key={item.label} style={{ marginBottom: "12px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                  marginBottom: "4px",
-                }}
-              >
-                <span>{item.label}</span>
-                <span>{item.value}%</span>
-              </div>
+        <div className="stat-card">
+          <div className="stat-card__icon stat-card__icon--purple">◈</div>
+          <div className="stat-card__label">Topics mastered</div>
+          <div className="stat-card__value">
+            {topicsMastered}
+            <span className="unit">/ {TOPIC_ORDER.length}</span>
+          </div>
+        </div>
+      </div>
 
-              <div style={{ height: "8px", background: "#e5e7eb", borderRadius: "5px" }}>
-                <div
-                  style={{
-                    width: `${item.value}%`,
-                    height: "8px",
-                    background: item.color,
-                    borderRadius: "5px",
-                  }}
-                ></div>
-              </div>
+      {/* ─── Two-column layout ─────────────────────── */}
+      <div className="progress-sections">
+        {/* LEFT: mastery + errors */}
+        <div className="progress-section-stack">
+          <div className="card">
+            <div className="progress-section-title">Topic Mastery</div>
+            <div className="topic-mastery-list">
+              {topicPerformance.map((tp) => (
+                <div key={tp.topic} className="topic-mastery-item">
+                  <div className="topic-mastery-header">
+                    <span className="topic-mastery-name">{tp.topic}</span>
+                    <div className="topic-mastery-meta">
+                      <span className="topic-mastery-value">
+                        {pct(tp.accuracy)}
+                      </span>
+                      <span>
+                        {tp.successes}/{tp.attempts}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="progress">
+                    <div
+                      className={`progress__fill ${progressFillClass(tp.accuracy)}`}
+                      style={{ width: `${Math.round(tp.accuracy * 100)}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
 
-        {/* TOPIC STRENGTH (🔥 NEW BAR UI) */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#4f46e5" }}>📚 Topic Strength</h3>
-
-          {topics.map((topic) => (
-            <div key={topic.name} style={{ marginBottom: "12px" }}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: "14px",
-                  marginBottom: "4px",
-                }}
-              >
-                <span>{topic.name}</span>
-                <span>{topic.value}%</span>
-              </div>
-
-              <div style={{ height: "8px", background: "#e5e7eb", borderRadius: "5px" }}>
-                <div
-                  style={{
-                    width: `${topic.value}%`,
-                    height: "8px",
-                    background: topic.color,
-                    borderRadius: "5px",
-                  }}
-                ></div>
-              </div>
+          <div className="card">
+            <div className="progress-section-title">Error Breakdown</div>
+            <div className="error-breakdown">
+              {error_breakdown.length === 0 && (
+                <div className="empty-state">
+                  <div className="empty-state__icon">✓</div>
+                  <div className="empty-state__text">
+                    No errors recorded yet — nice and clean.
+                  </div>
+                </div>
+              )}
+              {error_breakdown.map((err) => (
+                <div key={err.type} className="error-type-row">
+                  <div className="error-type-header">
+                    <span className="error-type-name">{err.type}</span>
+                    <span className="error-type-count">
+                      {err.count} {err.count === 1 ? "time" : "times"}
+                    </span>
+                  </div>
+                  <div className="progress">
+                    <div
+                      className="progress__fill progress__fill--danger"
+                      style={{
+                        width: `${Math.round(
+                          (err.count / maxErrorCount) * 100
+                        )}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* RECOMMENDATIONS */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#0ea5e9" }}>🎯 Recommended Problems</h3>
-          <ul style={{ paddingLeft: "16px", color: "#374151" }}>
-            <li>Practice loops with patterns</li>
-            <li>Try array-based problems</li>
-            <li>Work on condition logic</li>
-          </ul>
-        </div>
+        {/* RIGHT: recommendations + activity */}
+        <div className="progress-section-stack">
+          <div className="card">
+            <div className="progress-section-title">Recommended Next</div>
+            <div className="recommendations-list">
+              {enrichedRecommendations.length === 0 ? (
+                <div className="empty-state">
+                  <div className="empty-state__icon">◇</div>
+                  <div className="empty-state__text">
+                    Submit a few problems to unlock personalized
+                    recommendations.
+                  </div>
+                </div>
+              ) : (
+                enrichedRecommendations.map((rec, idx) => (
+                  <button
+                    key={rec.problem_id}
+                    className="recommendation-item"
+                    onClick={() => openProblem(rec.problem_id)}
+                  >
+                    <span className="recommendation-number">
+                      {String(idx + 1).padStart(2, "0")}
+                    </span>
+                    <div className="recommendation-body">
+                      <div className="recommendation-title">{rec.title}</div>
+                      <div className="recommendation-reason">{rec.reason}</div>
+                    </div>
+                    <span
+                      className={`badge badge--${rec.difficulty.toLowerCase()}`}
+                    >
+                      {rec.difficulty}
+                    </span>
+                  </button>
+                ))
+              )}
+            </div>
+          </div>
 
-        {/* ACTIVITY */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#8b5cf6" }}>🕒 Recent Activity</h3>
-
-          {total === 0 ? (
-            <p style={{ color: "#6b7280" }}>No activity yet.</p>
-          ) : (
-            attempts.slice(0, 4).map((attempt) => (
-              <div
-                key={attempt.id}
-                style={{
-                  padding: "8px 0",
-                  borderBottom: "1px solid #eee",
-                }}
-              >
-                <span>
-                  {attempt.status === "Success" ? "✅" : "❌"} {attempt.status}
-                </span>
-                <br />
-                <small style={{ color: "#9ca3af" }}>
-                  {attempt.timestamp}
-                </small>
+          <div className="card">
+            <div className="progress-section-title">Recent Activity</div>
+            {recent_submissions.length === 0 ? (
+              <div className="empty-state">
+                <div className="empty-state__icon">◇</div>
+                <div className="empty-state__text">No activity yet.</div>
               </div>
-            ))
-          )}
-        </div>
-
-        {/* ACHIEVEMENTS */}
-        <div style={card}>
-          <h3 style={{ ...title, color: "#f43f5e" }}>🏆 Achievements</h3>
-
-          {successCount >= 5 && <p>🏆 5 Successful Runs</p>}
-          {successCount >= 10 && <p>🔥 10+ Successes</p>}
-          {total >= 15 && <p>🚀 Active Learner</p>}
-
-          {total === 0 && <p style={{ color: "#6b7280" }}>No achievements yet</p>}
+            ) : (
+              <div className="activity-feed">
+                {recent_submissions.map((sub) => {
+                  const success = sub.status === "Success";
+                  return (
+                    <div key={sub.id} className="activity-item">
+                      <div
+                        className={`activity-icon ${
+                          success
+                            ? "activity-icon--success"
+                            : "activity-icon--error"
+                        }`}
+                      >
+                        {success ? "✓" : "✕"}
+                      </div>
+                      <div className="activity-body">
+                        <div className="activity-title">
+                          {sub.problem_title}
+                        </div>
+                        <div className="activity-meta">
+                          {sub.topic} · {formatRelativeTime(sub.timestamp)}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </section>
