@@ -73,6 +73,11 @@ def _ensure_indexes(db):
         unique=True,
         name="user_code_unique",
     )
+    # study_content: unique chapter cache for generated study summaries
+    db.study_content.create_index(
+        [("chapter_id", ASCENDING)], unique=True,
+        name="chapter_id_unique",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -97,6 +102,11 @@ def topic_stats_col():
 def hint_state_col():
     """Return the `hint_state` collection."""
     return get_db().hint_state
+
+
+def study_content_col():
+    """Return the `study_content` collection."""
+    return get_db().study_content
 
 
 # ---------------------------------------------------------------------------
@@ -126,6 +136,36 @@ def get_user(user_id: str):
         return users_col().find_one({"_id": ObjectId(user_id)})
     except Exception:
         return None
+
+
+def get_study_content(chapter_id: str):
+    """
+    Return cached study content for a given chapter_id.
+    """
+    if not chapter_id:
+        return None
+    return study_content_col().find_one({"chapter_id": chapter_id}, {"_id": 0})
+
+
+def save_study_content(chapter_id: str, content: dict):
+    """
+    Cache generated study content for a chapter.
+    """
+    if not chapter_id or not isinstance(content, dict):
+        return None
+
+    payload = {
+        "chapter_id": chapter_id,
+        "title": content.get("title"),
+        "sections": content.get("sections", []),
+        "generated_at": datetime.utcnow(),
+    }
+    study_content_col().update_one(
+        {"chapter_id": chapter_id},
+        {"$set": payload},
+        upsert=True,
+    )
+    return payload
 
 
 # ---------------------------------------------------------------------------
