@@ -6,6 +6,8 @@ function EditorToolbar({
   isSubmitting,
   onHint,
   hasHints,
+  onToggleFullscreen,
+  isFullscreen,
 }) {
   const busy = isRunning || isSubmitting;
 
@@ -23,6 +25,16 @@ function EditorToolbar({
       </div>
 
       <div className="editor-toolbar-right">
+        <button
+          className="toolbar-btn toolbar-fullscreen"
+          onClick={onToggleFullscreen}
+          disabled={busy}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? "⤢ Exit" : "⤢ Full"}
+        </button>
+
         {hasHints && (
           <button
             className="toolbar-btn toolbar-hint"

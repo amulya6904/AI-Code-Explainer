@@ -5,7 +5,15 @@ import Editor from "@monaco-editor/react";
 //   Main.java:5: error: ';' expected
 const JAVAC_LINE_RE = /\bMain\.java:(\d+):.*?error:\s*(.+)/g;
 
-function CodeEditor({ code, setCode, errorLine, errorMessage, readOnly }) {
+function CodeEditor({
+  code,
+  setCode,
+  errorLine,
+  errorMessage,
+  readOnly,
+  isFullscreen,
+  editorHeight,
+}) {
   const editorRef = useRef(null);
   const monacoRef = useRef(null);
 
@@ -75,7 +83,7 @@ function CodeEditor({ code, setCode, errorLine, errorMessage, readOnly }) {
 
   return (
     <Editor
-      height="380px"
+      height={isFullscreen ? "calc(100vh - 72px)" : `${editorHeight || 380}px`}
       defaultLanguage="java"
       theme="vs-dark"
       value={code}

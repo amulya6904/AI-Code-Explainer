@@ -3,6 +3,7 @@ import Sidebar from "./components/layout/Sidebar";
 import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
+import Simulation from "./pages/Simulation";
 import { problems } from "./data/problems";
 import "./styles/theme.css";
 import "./styles/globals.css";
@@ -12,12 +13,27 @@ function App() {
   const [activePage, setActivePage] = useState("Dashboard");
   const [attempts, setAttempts] = useState([]);
   const [selectedProblemId, setSelectedProblemId] = useState(problems[0].id);
+  const [isSidebarVisible, setIsSidebarVisible] = useState(true);
 
   return (
-    <div className="app-shell">
-      <Sidebar activePage={activePage} setActivePage={setActivePage} />
+    <div className={`app-shell ${isSidebarVisible ? "" : "sidebar-hidden"}`}>
+      <Sidebar
+        activePage={activePage}
+        setActivePage={setActivePage}
+        onToggle={() => setIsSidebarVisible((prev) => !prev)}
+      />
 
       <main className="main-content">
+        {!isSidebarVisible && (
+          <button
+            className="sidebar-toggle sidebar-toggle--floating"
+            onClick={() => setIsSidebarVisible(true)}
+            aria-label="Show sidebar"
+            title="Show sidebar"
+          >
+            ☰
+          </button>
+        )}
 
         {activePage === "Dashboard" && (
           <Dashboard
@@ -38,6 +54,7 @@ function App() {
             setSelectedProblemId={setSelectedProblemId}
           />
         )}
+        {activePage === "Simulator" && <Simulation />}
       </main>
     </div>
   );

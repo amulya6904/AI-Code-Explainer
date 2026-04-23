@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CodeEditor from "../components/editor/CodeEditor";
 import EditorToolbar from "../components/editor/EditorToolbar";
 import OutputPanel from "../components/panels/OutputPanel";
@@ -68,6 +68,8 @@ function unpackResponse(res) {
 
 function Practice({ attempts, setAttempts, selectedProblemId }) {
   const problem = getProblemById(selectedProblemId);
+  const layoutRef = useRef(null);
+  const editorCardRef = useRef(null);
 
   const [code, setCode] = useState(problem.starterCode);
   const [status, setStatus] = useState("Idle");
@@ -76,6 +78,11 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
   const [errorLine, setErrorLine] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [showHintModal, setShowHintModal] = useState(false);
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false);
+  const [leftPaneWidth, setLeftPaneWidth] = useState(null);
+  const [editorHeight, setEditorHeight] = useState(380);
+  const [isResizingWidth, setIsResizingWidth] = useState(false);
+  const [isResizingHeight, setIsResizingHeight] = useState(false);
 
   // Highest hint level the user has actually revealed this session.
   // Resets when the user picks a new problem or hits Reset. Carried
@@ -103,7 +110,86 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
     setShowHintModal(false);
     setHintsUsed(0);
     setVerdict(null);
+    setIsEditorFullscreen(false);
   }, [problem.id]);
+
+  useEffect(() => {
+    if (!isEditorFullscreen) return;
+
+    const onKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setIsEditorFullscreen(false);
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [isEditorFullscreen]);
+
+  useEffect(() => {
+    if (!isResizingWidth && !isResizingHeight) return;
+
+    const onMouseMove = (event) => {
+      if (isResizingWidth) {
+        const layout = layoutRef.current;
+        if (!layout) return;
+
+        const rect = layout.getBoundingClientRect();
+        const minLeft = 280;
+        const minRight = 460;
+        const maxLeft = Math.max(minLeft, rect.width - minRight);
+        const nextLeft = Math.min(
+          Math.max(event.clientX - rect.left, minLeft),
+          maxLeft,
+        );
+
+        setLeftPaneWidth(nextLeft);
+      }
+
+      if (isResizingHeight) {
+        const editorCard = editorCardRef.current;
+        if (!editorCard) return;
+
+        const cardRect = editorCard.getBoundingClientRect();
+        const toolbar = editorCard.querySelector(".editor-toolbar");
+        const toolbarHeight = toolbar?.offsetHeight ?? 56;
+
+        const minEditorHeight = 220;
+        const maxEditorHeight = Math.max(
+          minEditorHeight,
+          window.innerHeight - cardRect.top - 72,
+        );
+        const nextEditorHeight = Math.min(
+          Math.max(event.clientY - cardRect.top - toolbarHeight, minEditorHeight),
+          maxEditorHeight,
+        );
+
+        setEditorHeight(nextEditorHeight);
+      }
+    };
+
+    const onMouseUp = () => {
+      setIsResizingWidth(false);
+      setIsResizingHeight(false);
+    };
+
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = isResizingWidth ? "col-resize" : "row-resize";
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+
+    return () => {
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [isResizingWidth, isResizingHeight]);
 
   const resetFeedback = () => {
     setOutput("");
@@ -257,16 +343,47 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
   };
 
   const busy = isRunning || isSubmitting;
+  const layoutStyle =
+    leftPaneWidth
+      ? {
+          gridTemplateColumns: `minmax(280px, ${leftPaneWidth}px) minmax(460px, 1fr)`,
+        }
+      : undefined;
 
   return (
     <section className="workspace-page">
-      <div className="workspace-layout">
+      <div className="workspace-layout" ref={layoutRef} style={layoutStyle}>
         <div className="workspace-left card">
           <ProblemGuidance problem={problem} />
         </div>
 
         <div className="workspace-right">
-          <div className="card practice-editor">
+          <div
+            className={`card practice-editor${isEditorFullscreen ? " practice-editor--fullscreen" : ""}`}
+            ref={editorCardRef}
+          >
+            {!isEditorFullscreen && (
+              <>
+                <div
+                  className="practice-editor-resize-handle practice-editor-resize-handle--left"
+                  onMouseDown={() => {
+                    if (window.innerWidth <= 1100) return;
+                    setIsResizingWidth(true);
+                  }}
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label="Resize editor width"
+                />
+                <div
+                  className="practice-editor-resize-handle practice-editor-resize-handle--bottom"
+                  onMouseDown={() => setIsResizingHeight(true)}
+                  role="separator"
+                  aria-orientation="horizontal"
+                  aria-label="Resize editor height"
+                />
+              </>
+            )}
+
             <EditorToolbar
               onRun={handleRun}
               onSubmit={handleSubmit}
@@ -275,6 +392,10 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
               isSubmitting={isSubmitting}
               onHint={() => setShowHintModal(true)}
               hasHints={!!hints}
+              onToggleFullscreen={() =>
+                setIsEditorFullscreen((prev) => !prev)
+              }
+              isFullscreen={isEditorFullscreen}
             />
             <CodeEditor
               code={code}
@@ -282,6 +403,8 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
               errorLine={errorLine}
               errorMessage={errorMessage}
               readOnly={busy}
+              isFullscreen={isEditorFullscreen}
+              editorHeight={editorHeight}
             />
           </div>
 
