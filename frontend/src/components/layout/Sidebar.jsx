@@ -66,7 +66,6 @@ const menuItems = [
   { label: "Progress", icon: ProgressIcon },
   { label: "Simulator", icon: SimulatorIcon },
   { label: "Study", icon: BookIcon },
-  { label: "Simulator", icon: SimulatorIcon },
 ];
 
 function Sidebar({ activePage, setActivePage, onToggle }) {
