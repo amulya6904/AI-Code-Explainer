@@ -34,6 +34,7 @@ from typing import Optional
 
 from flask import Blueprint, request
 
+from ast_parser import parse_code_to_structured_ast
 from database import get_study_content, log_llm_feedback, save_study_content
 from encouragement_engine import generate_encouragement
 from fallback_engine import process_with_fallback
@@ -98,6 +99,39 @@ def _http_status_for(execution_status: str) -> int:
     return HTTPStatus.REQUEST_TIMEOUT if execution_status == "Timeout" else HTTPStatus.OK
 
 
+def _validate_parse_ast_body(body: Optional[dict]) -> Optional[tuple]:
+    """
+    Validate request body for ``/parse-ast``.
+
+    Expected JSON shape:
+        {"language": "java|python", "code": "..."}
+    """
+    if not body:
+        return fail(
+            message="Request body must be valid JSON.",
+            code=ErrorCode.INVALID_INPUT,
+            http_status=HTTPStatus.BAD_REQUEST,
+        )
+
+    if not (body.get("language") or "").strip():
+        return fail(
+            message="Field 'language' is required and must not be empty.",
+            code=ErrorCode.MISSING_FIELD,
+            details={"field": "language"},
+            http_status=HTTPStatus.BAD_REQUEST,
+        )
+
+    if not (body.get("code") or "").strip():
+        return fail(
+            message="Field 'code' is required and must not be empty.",
+            code=ErrorCode.MISSING_FIELD,
+            details={"field": "code"},
+            http_status=HTTPStatus.BAD_REQUEST,
+        )
+
+    return None
+
+
 def _normalize_output(text) -> str:
     """
     Line-wise whitespace normalization for output comparison.
@@ -142,6 +176,44 @@ def health():
     Liveness probe.  Returns ``{"status": "Backend Running"}`` on success.
     """
     return ok({"status": "Backend Running"})
+
+
+@api_bp.route("/parse-ast", methods=["POST"])
+def parse_ast():
+    """
+    POST /api/parse-ast
+    -------------------
+    Parse Java/Python source code and return a structured AST payload
+    with extracted loops, conditions, functions, and variables.
+    """
+    body = request.get_json(silent=True)
+
+    validation_error = _validate_parse_ast_body(body)
+    if validation_error:
+        return validation_error
+
+    language = body["language"].strip().lower()
+    code = body["code"]
+
+    try:
+        payload = parse_code_to_structured_ast(code=code, language=language)
+    except ValueError as exc:
+        return fail(
+            message=str(exc),
+            code=ErrorCode.INVALID_INPUT,
+            details={"field": "language"},
+            http_status=HTTPStatus.BAD_REQUEST,
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("AST parsing failed")
+        return fail(
+            message="Failed to parse source code.",
+            code=ErrorCode.INTERNAL_ERROR,
+            details={"detail": str(exc)},
+            http_status=HTTPStatus.INTERNAL_SERVER_ERROR,
+        )
+
+    return ok(payload)
 
 
 @api_bp.route("/submit-code", methods=["POST"])

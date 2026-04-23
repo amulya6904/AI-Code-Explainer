@@ -37,6 +37,15 @@ const ProgressIcon = () => (
   </Icon>
 );
 
+const SimulatorIcon = () => (
+  <Icon>
+    <rect x="3" y="4" width="18" height="14" rx="2" />
+    <path d="M7 9h10" />
+    <path d="M7 13h5" />
+    <circle cx="17" cy="13" r="1.5" />
+  </Icon>
+);
+
 const BookIcon = () => (
   <Icon>
     <path d="M6 4h12a2 2 0 0 1 2 2v14a1 1 0 0 1-1.4.91L12 17.18l-6.6 3.73A1 1 0 0 1 4 20V6a2 2 0 0 1 2-2z" />
@@ -55,12 +64,22 @@ const menuItems = [
   { label: "Dashboard", icon: DashboardIcon },
   { label: "Practice", icon: PracticeIcon },
   { label: "Progress", icon: ProgressIcon },
+  { label: "Simulator", icon: SimulatorIcon },
   { label: "Study", icon: BookIcon },
 ];
 
-function Sidebar({ activePage, setActivePage }) {
+function Sidebar({ activePage, setActivePage, onToggle }) {
   return (
     <aside className="sidebar">
+      <button
+        className="sidebar-toggle"
+        onClick={onToggle}
+        aria-label="Hide sidebar"
+        title="Hide sidebar"
+      >
+        ◀
+      </button>
+
       <div className="sidebar-brand">
         <div className="sidebar-logo-mark">{"{C}"}</div>
         <div className="sidebar-brand-text">
