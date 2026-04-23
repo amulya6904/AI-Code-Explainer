@@ -39,6 +39,13 @@ export const getLearningSummary = async (userId) => {
   return unwrap(response);
 };
 
+export const getStudyTopicContent = async (chapterId, section) => {
+  const response = await API.get(`/study/topic/${chapterId}`, {
+    params: section ? { section } : undefined,
+  });
+  return unwrap(response);
+};
+
 export const submitFeedback = async (payload) => {
   const response = await API.post("/feedback", payload);
   return unwrap(response);

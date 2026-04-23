@@ -35,7 +35,7 @@ from typing import Optional
 from flask import Blueprint, request
 
 from ast_parser import parse_code_to_structured_ast
-from database import log_llm_feedback
+from database import get_study_content, log_llm_feedback, save_study_content
 from encouragement_engine import generate_encouragement
 from fallback_engine import process_with_fallback
 from hallucination_guard import validate_and_filter_response
@@ -45,8 +45,9 @@ from hint_manager import (
     update_hint_level,
 )
 from java_engine import execute_java_code
-from llm import generate_hints
+from llm import LLM_ENABLED, generate_hints, generate_study_content
 from response import ErrorCode, fail, ok
+from study_prompts import get_fallback_content, get_chapter_definition
 from submission_service import detect_topic_from_error, save_submission
 from topic_analyzer import get_learning_summary
 
@@ -583,6 +584,63 @@ def learning_summary(user_id: str):
         )
 
     return ok(summary)
+
+
+@api_bp.route("/study/topic/<string:chapter_id>", methods=["GET"])
+def study_topic(chapter_id: str):
+    chapter_id = (chapter_id or "").strip()
+    if not chapter_id:
+        return fail(
+            message="Path parameter 'chapter_id' must not be empty.",
+            code=ErrorCode.MISSING_FIELD,
+            details={"field": "chapter_id"},
+            http_status=HTTPStatus.BAD_REQUEST,
+        )
+
+    chapter_definition = get_chapter_definition(chapter_id)
+    if not chapter_definition:
+        return fail(
+            message="Chapter not found.",
+            code=ErrorCode.NOT_FOUND,
+            details={"chapter_id": chapter_id},
+            http_status=HTTPStatus.NOT_FOUND,
+        )
+
+    cached = _safe_call("get_study_content", get_study_content, chapter_id, default=None)
+    if cached:
+        data = cached
+    else:
+        if LLM_ENABLED:
+            try:
+                data = generate_study_content(
+                    chapter_id=chapter_id,
+                    chapter_title=chapter_definition["title"],
+                    section_headings=chapter_definition["section_headings"],
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("study_topic: LLM generation failed for %s: %s", chapter_id, exc)
+                data = get_fallback_content(chapter_id)
+        else:
+            data = get_fallback_content(chapter_id)
+
+        _safe_call("save_study_content", save_study_content, chapter_id, data, default=None)
+
+    section_name = (request.args.get("section") or "").strip()
+    if section_name:
+        section_match = next(
+            (section for section in data.get("sections", []) if section.get("heading", "").strip().lower() == section_name.lower()),
+            None,
+        )
+        if not section_match:
+            return fail(
+                message="Requested section not found.",
+                code=ErrorCode.NOT_FOUND,
+                details={"section": section_name},
+                http_status=HTTPStatus.NOT_FOUND,
+            )
+        data = {**data, "sections": [section_match]}
+
+    return ok(data)
 
 
 @api_bp.route("/feedback", methods=["POST"])

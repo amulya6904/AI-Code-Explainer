@@ -46,6 +46,13 @@ const SimulatorIcon = () => (
   </Icon>
 );
 
+const BookIcon = () => (
+  <Icon>
+    <path d="M6 4h12a2 2 0 0 1 2 2v14a1 1 0 0 1-1.4.91L12 17.18l-6.6 3.73A1 1 0 0 1 4 20V6a2 2 0 0 1 2-2z" />
+    <path d="M6 6v14l6-3.4L18 20V6" />
+  </Icon>
+);
+
 const SparkleIcon = () => (
   <Icon>
     <path d="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7L12 3z" />
@@ -57,6 +64,8 @@ const menuItems = [
   { label: "Dashboard", icon: DashboardIcon },
   { label: "Practice", icon: PracticeIcon },
   { label: "Progress", icon: ProgressIcon },
+  { label: "Simulator", icon: SimulatorIcon },
+  { label: "Study", icon: BookIcon },
   { label: "Simulator", icon: SimulatorIcon },
 ];
 

@@ -39,6 +39,8 @@ from typing import Optional
 
 import requests
 
+from study_prompts import get_chapter_prompt, get_fallback_content
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -374,3 +376,66 @@ def generate_hint(code: str, result: dict) -> Optional[str]:
         parts.append(f"Learning tip: {hints['learning_tip']}")
 
     return "\n\n".join(parts) if parts else None
+
+def generate_study_content(chapter_id: str, chapter_title: str, section_headings: list) -> dict:
+    """Generate structured study content for a chapter using the LLM."""
+    if not chapter_id:
+        raise ValueError("chapter_id is required")
+
+    if not LLM_ENABLED:
+        logger.debug("LLM disabled (LLM_ENABLED=false) ? using fallback study content")
+        return get_fallback_content(chapter_id)
+
+    chapter_prompt = get_chapter_prompt(chapter_id)
+    if not chapter_prompt:
+        return get_fallback_content(chapter_id)
+
+    system_prompt = chapter_prompt["system"]
+    user_prompt = chapter_prompt["user"]
+
+    try:
+        raw_content = _call_llm(system_prompt, user_prompt)
+    except requests.exceptions.ConnectionError:
+        logger.error("LLM connection failed while generating study content")
+        return get_fallback_content(chapter_id)
+    except requests.exceptions.Timeout:
+        logger.error("LLM timeout while generating study content")
+        return get_fallback_content(chapter_id)
+    except requests.exceptions.HTTPError as exc:
+        logger.error("LLM API error while generating study content: %s", exc)
+        return get_fallback_content(chapter_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("Unexpected error during study content generation")
+        return get_fallback_content(chapter_id)
+
+    if isinstance(raw_content, list):
+        raw_sections = raw_content
+        raw_title = chapter_title
+    elif isinstance(raw_content, dict):
+        raw_sections = raw_content.get("sections")
+        raw_title = raw_content.get("title", chapter_title)
+    else:
+        raw_sections = None
+        raw_title = chapter_title
+
+    if not raw_sections:
+        return get_fallback_content(chapter_id)
+
+    sections = []
+    for section in raw_sections:
+        if not isinstance(section, dict):
+            continue
+        sections.append({
+            "heading": str(section.get("heading", "")).strip(),
+            "content": str(section.get("content", "")).strip(),
+            "code_example": str(section.get("code_example", "") or "").strip(),
+        })
+
+    if not sections:
+        return get_fallback_content(chapter_id)
+
+    return {
+        "chapter_id": chapter_id,
+        "title": str(raw_title).strip(),
+        "sections": sections,
+    }

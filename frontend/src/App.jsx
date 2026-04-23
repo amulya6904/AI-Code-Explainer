@@ -4,6 +4,7 @@ import Dashboard from "./pages/Dashboard";
 import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import Simulation from "./pages/Simulation";
+import Study from "./pages/Study";
 import { problems } from "./data/problems";
 import "./styles/theme.css";
 import "./styles/globals.css";
@@ -50,6 +51,13 @@ function App() {
         )}
         {activePage === "Progress" && (
           <Progress
+            setActivePage={setActivePage}
+            setSelectedProblemId={setSelectedProblemId}
+          />
+        )}
+        {activePage === "Simulator" && <Simulation />}
+        {activePage === "Study" && (
+          <Study
             setActivePage={setActivePage}
             setSelectedProblemId={setSelectedProblemId}
           />
