@@ -10,3 +10,10 @@ env/
 .vscode/
 .DS_Store
 Thumbs.db
+
+backend/__pycache__/
+*.log
+backend/*.log
+backend/*.err.log
+backend/*.out.log
+*.docx
