@@ -2,6 +2,12 @@
 
 from __future__ import annotations
 
+from study_curated_content import (
+    CURATED_CHAPTER_IDS,
+    CURATED_FALLBACK_CONTENT,
+    is_placeholder_study_content,
+)
+
 STUDY_SYSTEM_PROMPT = (
     "You are a Java instructor writing structured study material for beginners. "
     "Generate content for each section in the exact JSON schema provided. "
@@ -889,7 +895,7 @@ def _build_generated_content() -> dict:
     return generated
 
 
-FALLBACK_CONTENT.update(_build_generated_content())
+FALLBACK_CONTENT.update(CURATED_FALLBACK_CONTENT)
 
 CHAPTER_DEFINITIONS = {
     chapter_id: {

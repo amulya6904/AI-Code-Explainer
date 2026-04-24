@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import StudyQuiz from "../components/study/StudyQuiz";
+import StudyCodeBlock from "../components/study/StudyCodeBlock";
 import { problems } from "../data/problems";
 import { studyQuizzes } from "../data/studyQuizzes";
 import { studyTopics } from "../data/studyTopics";
@@ -273,9 +274,7 @@ function Study({ setActivePage, setSelectedProblemId }) {
                 </div>
                 <p>{section.content}</p>
                 {section.code_example ? (
-                  <pre className="study-code">
-                    <code>{section.code_example}</code>
-                  </pre>
+                  <StudyCodeBlock code={section.code_example} />
                 ) : null}
               </div>
             ))}

@@ -4,6 +4,7 @@ function StudyQuiz({ quiz }) {
   const [isOpen, setIsOpen] = useState(false);
   const [answers, setAnswers] = useState({});
   const [submitted, setSubmitted] = useState(false);
+  const totalQuestions = quiz.length;
 
   const score = useMemo(() => {
     if (!submitted) return 0;
@@ -15,7 +16,7 @@ function StudyQuiz({ quiz }) {
   }, [answers, quiz, submitted]);
 
   const answeredCount = Object.keys(answers).length;
-  const allAnswered = answeredCount === quiz.length;
+  const allAnswered = answeredCount === totalQuestions;
 
   const handleSelect = (questionIndex, optionIndex) => {
     if (submitted) return;
@@ -40,7 +41,7 @@ function StudyQuiz({ quiz }) {
         <div>
           <span className="card-label">Concept Check</span>
           <h3>Test your understanding</h3>
-          <p>Answer 10 quick MCQs for this concept.</p>
+          <p>Answer {totalQuestions} application-based MCQs for this concept.</p>
         </div>
 
         <button
@@ -55,8 +56,8 @@ function StudyQuiz({ quiz }) {
       {isOpen ? (
         <div className="study-quiz">
           <div className="study-quiz__meta">
-            <span>{answeredCount}/10 answered</span>
-            {submitted ? <span>Score: {score}/10</span> : null}
+            <span>{answeredCount}/{totalQuestions} answered</span>
+            {submitted ? <span>Score: {score}/{totalQuestions}</span> : null}
           </div>
 
           <div className="study-quiz__questions">

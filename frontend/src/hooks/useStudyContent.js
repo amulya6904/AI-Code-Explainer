@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { getStudyTopicContent } from "../api/client";
+import {
+  isGenericStudyContent,
+  studyFallbackContent,
+} from "../data/studyFallbackContent";
+
+function getLocalStudyContent(chapterId) {
+  return studyFallbackContent[chapterId] || null;
+}
 
 export function useStudyContent(chapterId) {
   const [content, setContent] = useState(null);
@@ -19,12 +27,19 @@ export function useStudyContent(chapterId) {
     getStudyTopicContent(chapterId)
       .then((data) => {
         if (cancelled) return;
-        setContent(data);
+        const fallback = getLocalStudyContent(chapterId);
+        setContent(fallback && isGenericStudyContent(data) ? fallback : data);
         setStatus("ready");
       })
       .catch((err) => {
         if (cancelled) return;
         console.error("Failed to load study content:", err);
+        const fallback = getLocalStudyContent(chapterId);
+        if (fallback) {
+          setContent(fallback);
+          setStatus("ready");
+          return;
+        }
         setStatus("error");
       });
 

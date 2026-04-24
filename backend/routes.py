@@ -47,7 +47,12 @@ from hint_manager import (
 from java_engine import execute_java_code
 from llm import LLM_ENABLED, generate_hints, generate_study_content
 from response import ErrorCode, fail, ok
-from study_prompts import get_fallback_content, get_chapter_definition
+from study_prompts import (
+    CURATED_CHAPTER_IDS,
+    get_chapter_definition,
+    get_fallback_content,
+    is_placeholder_study_content,
+)
 from submission_service import detect_topic_from_error, save_submission
 from topic_analyzer import get_learning_summary
 
@@ -606,24 +611,30 @@ def study_topic(chapter_id: str):
             http_status=HTTPStatus.NOT_FOUND,
         )
 
-    cached = _safe_call("get_study_content", get_study_content, chapter_id, default=None)
-    if cached:
-        data = cached
-    else:
-        if LLM_ENABLED:
-            try:
-                data = generate_study_content(
-                    chapter_id=chapter_id,
-                    chapter_title=chapter_definition["title"],
-                    section_headings=chapter_definition["section_headings"],
-                )
-            except Exception as exc:  # noqa: BLE001
-                logger.error("study_topic: LLM generation failed for %s: %s", chapter_id, exc)
-                data = get_fallback_content(chapter_id)
-        else:
-            data = get_fallback_content(chapter_id)
-
+    # Chapters 4-31 now have curated static content. Serve that directly so
+    # previously cached placeholder content or LLM output cannot override it.
+    if chapter_id in CURATED_CHAPTER_IDS:
+        data = get_fallback_content(chapter_id)
         _safe_call("save_study_content", save_study_content, chapter_id, data, default=None)
+    else:
+        cached = _safe_call("get_study_content", get_study_content, chapter_id, default=None)
+        if cached and not is_placeholder_study_content(chapter_id, cached):
+            data = cached
+        else:
+            if LLM_ENABLED:
+                try:
+                    data = generate_study_content(
+                        chapter_id=chapter_id,
+                        chapter_title=chapter_definition["title"],
+                        section_headings=chapter_definition["section_headings"],
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    logger.error("study_topic: LLM generation failed for %s: %s", chapter_id, exc)
+                    data = get_fallback_content(chapter_id)
+            else:
+                data = get_fallback_content(chapter_id)
+
+            _safe_call("save_study_content", save_study_content, chapter_id, data, default=None)
 
     section_name = (request.args.get("section") or "").strip()
     if section_name:
