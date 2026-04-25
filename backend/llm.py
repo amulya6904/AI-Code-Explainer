@@ -61,6 +61,12 @@ LLM_ENABLED: bool = os.getenv("LLM_ENABLED", "false").lower() == "true"
 # Seconds to wait for LM Studio to respond before timing out
 LLM_TIMEOUT: int = int(os.getenv("LLM_TIMEOUT", "30"))
 
+ROUTELLM_API_KEY = (
+    os.getenv("ROUTELLM_API_KEY", "")
+    or os.getenv("LLM_API_KEY", "")
+    or os.getenv("OPENAI_API_KEY", "")
+)
+
 # Generation parameters
 _TEMPERATURE: float = 0.3
 _MAX_TOKENS:  int   = 1200
@@ -112,7 +118,7 @@ def _build_system_prompt() -> str:
     )
 
 
-def _build_user_prompt(code: str, execution_result: dict) -> str:
+def _build_user_prompt(code: str, execution_result: dict, question_context: Optional[dict] = None) -> str:
     """
     Return the user prompt built from the submitted code and execution result.
 
@@ -132,9 +138,43 @@ def _build_user_prompt(code: str, execution_result: dict) -> str:
         location_parts.append(f"Exception type: {exc_type}")
     location_info = "\n  ".join(location_parts) if location_parts else "Not available"
 
+    context_block = ""
+    if isinstance(question_context, dict) and question_context:
+        title = str(question_context.get("title") or "").strip()
+        topic = str(question_context.get("topic") or "").strip()
+        description = str(question_context.get("description") or "").strip()
+        expected_output = str(question_context.get("expected_output") or "").strip()
+
+        # Keep prompt growth bounded so context helps grounding without flooding tokens.
+        if description:
+            description = description[:700]
+        if expected_output:
+            expected_output = expected_output[:500]
+
+        lines = ["Question Context:"]
+        if title:
+            lines.append(f"  Title: {title}")
+        if topic:
+            lines.append(f"  Topic: {topic}")
+        if description:
+            lines.append(f"  Description: {description}")
+        if expected_output:
+            lines.append(f"  Expected output: {expected_output}")
+
+        constraints = question_context.get("constraints")
+        if isinstance(constraints, list) and constraints:
+            first_constraints = [str(item).strip() for item in constraints[:4] if str(item).strip()]
+            if first_constraints:
+                lines.append("  Constraints:")
+                for item in first_constraints:
+                    lines.append(f"    - {item[:180]}")
+
+        context_block = "\n".join(lines) + "\n\n"
+
     return (
         f"A student submitted the following Java code:\n\n"
         f"```java\n{code}\n```\n\n"
+        f"{context_block}"
         f"Execution Result:\n"
         f"  Status:        {status}\n"
         f"  Error message: {error_message}\n"
@@ -246,8 +286,15 @@ def _call_llm(system_prompt: str, user_prompt: str) -> dict:
 
     logger.debug("Sending request to LLM at %s (model=%s)", LLM_API_URL, LLM_MODEL)
 
+    headers = {
+        "Content-Type": "application/json",
+    }
+    if ROUTELLM_API_KEY:
+        headers["Authorization"] = f"Bearer {ROUTELLM_API_KEY}"
+
     response = requests.post(
         LLM_API_URL,
+        headers=headers,
         json=payload,
         timeout=LLM_TIMEOUT,
     )
@@ -268,6 +315,7 @@ def generate_hints(
     code:             str,
     execution_result: dict,
     hint_level:       int = 1,
+    question_context: Optional[dict] = None,
 ) -> dict:
     """
     Generate structured, progressive hints for a Java submission.
@@ -312,7 +360,7 @@ def generate_hints(
     hint_level = max(1, min(3, hint_level))
 
     system_prompt = _build_system_prompt()
-    user_prompt   = _build_user_prompt(code, execution_result)
+    user_prompt   = _build_user_prompt(code, execution_result, question_context=question_context)
 
     try:
         raw_hints = _call_llm(system_prompt, user_prompt)
@@ -328,7 +376,13 @@ def generate_hints(
 
     except requests.exceptions.HTTPError as exc:
         logger.error("LLM API returned HTTP error: %s", exc)
-        return {"status": "LLMError", "message": f"LLM API error: {exc.response.status_code}"}
+        status_code = exc.response.status_code if exc.response is not None else "unknown"
+        if status_code in (401, 403):
+            return {
+                "status": "LLMError",
+                "message": "LLM authorization failed. Set ROUTELLM_API_KEY (or LLM_API_KEY/OPENAI_API_KEY).",
+            }
+        return {"status": "LLMError", "message": f"LLM API error: {status_code}"}
 
     except (KeyError, IndexError) as exc:
         # Unexpected shape in the API response JSON (e.g. missing "choices")

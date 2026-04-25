@@ -267,6 +267,15 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         problem_topic: problem.topic,
         hints_used: hintsUsed,
         expected_output: problem.expectedOutput,
+        question_context: {
+          problem_id: problem.id,
+          title: problem.title,
+          topic: problem.topic,
+          description: problem.description,
+          constraints: problem.constraints,
+          examples: problem.examples,
+          expected_output: problem.expectedOutput,
+        },
       });
 
       const unpacked = unpackResponse(res);

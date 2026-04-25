@@ -63,7 +63,7 @@ def test_pipeline_uses_retry_when_initial_invalid(monkeypatch):
         "learning_tip": "Learn Java identifier naming and scope.",
     }
 
-    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_: retry_output)
+    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_, **__: retry_output)
 
     result = process_with_fallback(
         code="class Main {}",
@@ -82,7 +82,7 @@ def test_pipeline_uses_template_when_retry_invalid(monkeypatch):
         "error_message": "java.lang.NullPointerException at Main.main(Main.java:6)",
     }
 
-    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_: None)
+    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_, **__: None)
 
     result = process_with_fallback(
         code="class Main {}",
@@ -101,7 +101,7 @@ def test_pipeline_uses_generic_fallback_when_no_template(monkeypatch):
         "error_message": "mysterious custom failure from sandbox",
     }
 
-    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_: None)
+    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_, **__: None)
 
     result = process_with_fallback(
         code="class Main {}",
@@ -119,7 +119,7 @@ def test_pipeline_uses_generic_fallback_when_no_template(monkeypatch):
 def test_pipeline_shapes_by_hint_level(monkeypatch):
     execution_result = {"status": "CompilationError", "error_message": "incompatible types"}
 
-    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_: None)
+    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", lambda *_, **__: None)
 
     result_level_1 = process_with_fallback(
         code="class Main {}",
@@ -136,3 +136,35 @@ def test_pipeline_shapes_by_hint_level(monkeypatch):
 
     assert "hint_2" not in result_level_1
     assert "hint_2" in result_level_3
+
+
+def test_pipeline_passes_question_context_to_retry(monkeypatch):
+    execution_result = {"status": "WrongOutput", "error_message": "Expected 6 but got 5"}
+    captured = {"question_context": None}
+
+    def _retry(code, execution_result, question_context=None):
+        captured["question_context"] = question_context
+        return {
+            "problem_summary": "Logic mismatch in output.",
+            "why": "The algorithm produced a different value than expected.",
+            "hint_1": "Trace one sample input by hand.",
+            "learning_tip": "Use dry-runs to verify loop logic.",
+        }
+
+    monkeypatch.setattr("fallback_engine.retry_llm_with_strict_prompt", _retry)
+
+    context = {
+        "title": "Sum of Digits",
+        "topic": "loops",
+        "expected_output": "6",
+    }
+
+    process_with_fallback(
+        code="class Main {}",
+        execution_result=execution_result,
+        hint_level=1,
+        llm_output={"bad": "shape"},
+        question_context=context,
+    )
+
+    assert captured["question_context"] == context

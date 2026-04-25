@@ -80,7 +80,11 @@ def _shape_response(response: dict, hint_level: int) -> dict:
     return base
 
 
-def retry_llm_with_strict_prompt(code: str, execution_result: dict) -> dict | None:
+def retry_llm_with_strict_prompt(
+    code: str,
+    execution_result: dict,
+    question_context: dict | None = None,
+) -> dict | None:
     """
     Retry LLM with strict constraints to reduce hallucinations.
 
@@ -115,6 +119,24 @@ def retry_llm_with_strict_prompt(code: str, execution_result: dict) -> dict | No
         "4) Explain simply for a beginner."
     )
 
+    if isinstance(question_context, dict) and question_context:
+        title = str(question_context.get("title") or "").strip()
+        topic = str(question_context.get("topic") or "").strip()
+        description = str(question_context.get("description") or "").strip()
+        expected_output = str(question_context.get("expected_output") or "").strip()
+
+        context_lines = ["\n\nQuestion context (use for grounding only):"]
+        if title:
+            context_lines.append(f"- Title: {title[:200]}")
+        if topic:
+            context_lines.append(f"- Topic: {topic[:100]}")
+        if description:
+            context_lines.append(f"- Description: {description[:500]}")
+        if expected_output:
+            context_lines.append(f"- Expected output: {expected_output[:300]}")
+
+        user_prompt += "\n".join(context_lines)
+
     try:
         return llm._call_llm(system_prompt=system_prompt, user_prompt=user_prompt)
     except (requests.exceptions.RequestException, KeyError, TypeError, ValueError):
@@ -132,7 +154,13 @@ def match_error_template(error_message: str) -> dict | None:
     return None
 
 
-def process_with_fallback(code: str, execution_result: dict, hint_level: int, llm_output: dict) -> dict:
+def process_with_fallback(
+    code: str,
+    execution_result: dict,
+    hint_level: int,
+    llm_output: dict,
+    question_context: dict | None = None,
+) -> dict:
     """
     Process LLM output through strict fallback pipeline and return safe response.
     """
@@ -142,7 +170,11 @@ def process_with_fallback(code: str, execution_result: dict, hint_level: int, ll
         return _shape_response(validated, hint_level)
 
     # 2) Retry with strict prompt, then validate again.
-    retry_output = retry_llm_with_strict_prompt(code, execution_result)
+    retry_output = retry_llm_with_strict_prompt(
+        code,
+        execution_result,
+        question_context=question_context,
+    )
     validated_retry = validate_and_filter_response(retry_output, execution_result) if retry_output else None
     if validated_retry:
         return _shape_response(validated_retry, hint_level)

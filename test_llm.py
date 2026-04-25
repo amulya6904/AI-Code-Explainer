@@ -182,6 +182,23 @@ class TestBuildUserPrompt:
     def test_returns_string(self):
         assert isinstance(_build_user_prompt(SAMPLE_CODE, RUNTIME_ERROR_RESULT), str)
 
+    def test_includes_question_context_when_provided(self):
+        context = {
+            "title": "Print Sum",
+            "topic": "loops",
+            "description": "Read N and print sum from 1 to N.",
+            "expected_output": "15",
+            "constraints": ["1 <= N <= 100"],
+        }
+        prompt = _build_user_prompt(SAMPLE_CODE, RUNTIME_ERROR_RESULT, question_context=context)
+        assert "Question Context:" in prompt
+        assert "Print Sum" in prompt
+        assert "Expected output: 15" in prompt
+
+    def test_omits_question_context_when_empty(self):
+        prompt = _build_user_prompt(SAMPLE_CODE, RUNTIME_ERROR_RESULT, question_context={})
+        assert "Question Context:" not in prompt
+
 
 # ===========================================================================
 # Group C – _parse_llm_response()
@@ -386,6 +403,22 @@ class TestGenerateHintsHappyPath:
             result = generate_hints(SAMPLE_CODE, RUNTIME_ERROR_RESULT)
         assert "hint_1" in result
         assert "hint_2" not in result
+
+    def test_question_context_is_included_in_user_message(self):
+        context = {
+            "title": "Reverse Number",
+            "topic": "math",
+            "description": "Print reverse of input integer.",
+            "expected_output": "321",
+        }
+        with patch.object(llm, "LLM_ENABLED", True), \
+             patch("llm.requests.post", return_value=_mock_response(FULL_HINTS)) as mock_post:
+            generate_hints(SAMPLE_CODE, RUNTIME_ERROR_RESULT, hint_level=1, question_context=context)
+
+        payload = mock_post.call_args[1]["json"]
+        user_message = next(msg["content"] for msg in payload["messages"] if msg["role"] == "user")
+        assert "Question Context:" in user_message
+        assert "Reverse Number" in user_message
 
 
 # ===========================================================================

@@ -273,6 +273,7 @@ def submit_code():
     problem_title = body.get("problem_title")
     problem_topic = body.get("problem_topic")  # canonical catalog topic
     expected_output = body.get("expected_output")
+    question_context = body.get("question_context") if isinstance(body.get("question_context"), dict) else None
 
     # The frontend HintPanel is the source of truth for how many hint
     # levels the student has actually revealed — it's echoed back here
@@ -312,9 +313,8 @@ def submit_code():
     # and the response's execution block untouched (so the frontend's
     # verdict banner and Output panel keep showing the actual program
     # output), but we flip `resolved` to False so the Solved tile's
-    # numerator/denominator math stays honest. Hint generation, error
-    # breakdown, and topic_stats are all skipped further down for this
-    # case — wrong output isn't a concept error, just a failed attempt.
+    # numerator/denominator math stays honest. We then generate logic-
+    # focused hints via a synthetic "WrongOutput" execution context.
     output_mismatch = False
     if (
         submission_type == "submit"
@@ -342,24 +342,40 @@ def submit_code():
     hints: Optional[dict] = None
     hallucination_flag = False
 
-    # Skip hint generation for wrong-output submits — the program ran
-    # fine, there's no stack trace to explain, and the student just
-    # needs to re-check their logic against the expected output.
-    if not resolved and not output_mismatch:
+    if not resolved:
+        hint_execution_result = result
+        if output_mismatch:
+            actual_output = result.get("output") or ""
+            expected_text = "" if expected_output is None else str(expected_output)
+            hint_execution_result = {
+                "status": "WrongOutput",
+                "error_message": (
+                    "Program ran successfully but output does not match expected output. "
+                    f"Expected: {expected_text[:500]} | Actual: {actual_output[:500]}"
+                ),
+                "output": actual_output,
+            }
+
         try:
-            raw_hints = generate_hints(code=code, execution_result=result, hint_level=3)
+            raw_hints = generate_hints(
+                code=code,
+                execution_result=hint_execution_result,
+                hint_level=3,
+                question_context=question_context,
+            )
             if raw_hints.get("status") == "LLMError":
                 raw_hints = {}
 
             # Detect hallucination: did the raw LLM output pass validation?
-            if raw_hints and validate_and_filter_response(raw_hints, result) is None:
+            if raw_hints and validate_and_filter_response(raw_hints, hint_execution_result) is None:
                 hallucination_flag = True
 
             hints = process_with_fallback(
                 code=code,
-                execution_result=result,
+                execution_result=hint_execution_result,
                 hint_level=3,
                 llm_output=raw_hints,
+                question_context=question_context,
             )
         except Exception as exc:  # noqa: BLE001
             logger.error("hint generation raised unexpectedly: %s", exc)
@@ -374,7 +390,12 @@ def submit_code():
     # ------------------------------------------------------------------
     # 4. Topic detection
     # ------------------------------------------------------------------
-    detected_topic = detect_topic_from_error(error_message) if not resolved else "general"
+    if resolved:
+        detected_topic = "general"
+    elif output_mismatch:
+        detected_topic = (str(problem_topic or "").strip() or str((question_context or {}).get("topic") or "").strip() or "general")
+    else:
+        detected_topic = detect_topic_from_error(error_message)
 
     # ------------------------------------------------------------------
     # 5. Hint-manager state sync
@@ -382,6 +403,8 @@ def submit_code():
     #    * On error: read current level (read-only — actual escalation
     #      happens in /api/request-hint).
     # ------------------------------------------------------------------
+    hint_state_error_type = "WrongOutput" if output_mismatch else status
+
     if resolved:
         _safe_call("reset_hint_level", reset_hint_level, user_id, code)
         current_hint_level = 0
@@ -389,7 +412,7 @@ def submit_code():
         current_hint_level = _safe_call(
             "get_current_hint_level",
             get_current_hint_level,
-            user_id, code, status,
+            user_id, code, hint_state_error_type,
             default=1,
         )
 
@@ -497,6 +520,7 @@ def request_hint():
     code:          str = body["code"].strip()
     error_type:    str = (body.get("error_type") or "").strip() or "RuntimeError"
     error_message: str = (body.get("error_message") or "").strip()
+    question_context = body.get("question_context") if isinstance(body.get("question_context"), dict) else None
 
     # Advance the escalation level (capped at MAX_HINT_LEVEL internally).
     new_level = _safe_call(
@@ -519,6 +543,7 @@ def request_hint():
             code=code,
             execution_result=execution_result,
             hint_level=new_level,
+            question_context=question_context,
         )
         if raw_hints.get("status") == "LLMError":
             raw_hints = {}
@@ -528,6 +553,7 @@ def request_hint():
             execution_result=execution_result,
             hint_level=new_level,
             llm_output=raw_hints,
+            question_context=question_context,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("request-hint: hint generation failed: %s", exc)
