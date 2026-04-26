@@ -4,10 +4,11 @@ import PlaybackController from "../components/simulation/PlaybackController";
 import HeapPanel from "../components/simulation/HeapPanel";
 import SpaceGrowthChart from "../components/simulation/SpaceGrowthChart";
 import StackPanel from "../components/simulation/StackPanel";
-import { exampleProgramAst } from "../simulator/exampleProgramAst";
 import { useSimulationPlaybackController } from "../hooks/useSimulationPlaybackController";
 import { runTimeComplexityEngine, getTimeLineExplanation } from "../simulator/timeEngine";
 import { buildSpaceComplexityTimeline, getSpaceLineExplanation } from "../simulator/spaceEngine";
+import { parseCodeToStructuredAst } from "../api/client";
+import { toSimulatorProgramAst } from "../simulator/astAdapter";
 
 const DEFAULT_SOURCE = `function main() {
   let num = 107962;
@@ -37,11 +38,18 @@ function toPlaybackStepsFromTimeline(timeline, defaultOperation = "timeline_step
   }));
 }
 
+function describeFinalTimeComplexity(finalComplexity) {
+  if (!finalComplexity || finalComplexity === "-") {
+    return "The final complexity is determined by the dominant operations in the executed flow.";
+  }
+  return `The dominant operations in this execution path determine the final result: ${finalComplexity}.`;
+}
+
 function Simulation() {
   const [code, setCode] = useState(DEFAULT_SOURCE);
   const [error, setError] = useState("");
   const [mode, setMode] = useState("time");
-  const [language, setLanguage] = useState("Python");
+  const [language, setLanguage] = useState("Java");
 
   const playback = useSimulationPlaybackController();
 
@@ -99,11 +107,30 @@ function Simulation() {
   const showSpaceCombinedExpression =
     Boolean(spaceCombinedExpression) &&
     spaceCombinedExpression !== spaceFinalComplexity;
+  const editorLanguage = language === "Java" ? "java" : "python";
 
-  const runSimulation = () => {
+  const runSimulation = async () => {
     try {
       setError("");
-      const parsed = exampleProgramAst;
+      const languageMap = {
+        Java: "java",
+        Python: "python",
+      };
+      const backendLanguage = languageMap[language];
+      if (!backendLanguage) {
+        throw new Error(`${language} is not supported for complexity simulation yet.`);
+      }
+
+      const parsedPayload = await parseCodeToStructuredAst({
+        language: backendLanguage,
+        code,
+      });
+
+      const parsed = toSimulatorProgramAst(parsedPayload, backendLanguage);
+
+      if (!parsed?.body?.length) {
+        throw new Error("Unable to build simulation AST from this code. Please check syntax and try again.");
+      }
 
       if (mode === "time") {
         const nextComplexityTimeline = runTimeComplexityEngine(parsed);
@@ -165,9 +192,8 @@ function Simulation() {
               onChange={(event) => setLanguage(event.target.value)}
               className="rounded-md border border-slate-700 bg-slate-900/80 px-3 py-1.5 text-sm text-slate-200"
             >
-              <option>Python</option>
-              <option>JavaScript</option>
               <option>Java</option>
+              <option>Python</option>
             </select>
 
             <button
@@ -232,6 +258,7 @@ function Simulation() {
         <SimulationEditor
           code={code}
           setCode={setCode}
+          language={editorLanguage}
           currentLine={playback.activeLine}
           highlightType={editorHighlightType}
           bubbleText={bubbleMessage}
@@ -251,7 +278,7 @@ function Simulation() {
                 {timeFinalComplexity}
               </div>
               <div className="mt-4 text-[15px] font-normal leading-7 text-slate-100/90">
-                The loop shrinks the number one digit at a time, so the work grows with the number of digits.
+                {describeFinalTimeComplexity(timeFinalComplexity)}
               </div>
             </div>
           </div>
@@ -313,7 +340,7 @@ function Simulation() {
               </div>
 
               <div className="mt-3 text-sm font-medium text-slate-300">
-                Because memory growth is dominated by the largest structure
+                Memory growth is dominated by the largest contributing structure.
               </div>
             </div>
           </div>

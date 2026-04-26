@@ -62,7 +62,6 @@ function App() {
             setSelectedProblemId={setSelectedProblemId}
           />
         )}
-        {activePage === "Simulator" && <Simulation />}
       </main>
     </div>
   );

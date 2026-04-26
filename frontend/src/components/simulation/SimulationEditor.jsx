@@ -5,6 +5,7 @@ import { highlightLine } from "./highlightLine";
 function SimulationEditor({
   code,
   setCode,
+  language = "javascript",
   currentLine,
   highlightType,
   bubbleText,
@@ -22,6 +23,12 @@ function SimulationEditor({
   const currentLineRef = useRef(currentLine);
   const [bubbleVisible, setBubbleVisible] = useState(false);
   const [bubbleTop, setBubbleTop] = useState(16);
+
+  const applyEditorLanguage = (editor, monaco, nextLanguage) => {
+    const model = editor?.getModel?.();
+    if (!model || !nextLanguage) return;
+    monaco.editor.setModelLanguage(model, nextLanguage);
+  };
 
   const updateBubbleTop = () => {
     const editor = editorRef.current;
@@ -51,8 +58,16 @@ function SimulationEditor({
     });
 
     scrollListenerRef.current = editor.onDidScrollChange(() => updateBubbleTop());
+    applyEditorLanguage(editor, monaco, language);
     updateBubbleTop();
   };
+
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+    applyEditorLanguage(editor, monaco, language);
+  }, [language]);
 
   useEffect(() => {
     const editor = editorRef.current;
@@ -154,7 +169,7 @@ function SimulationEditor({
     <div className="relative min-h-[calc(100vh-260px)] overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/55 shadow-panel">
       <Editor
         height="calc(100vh - 260px)"
-        defaultLanguage="javascript"
+        language={language}
         theme="vs-dark"
         value={code}
         onChange={(value) => setCode(value || "")}

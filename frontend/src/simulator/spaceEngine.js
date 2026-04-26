@@ -88,13 +88,6 @@ function contributionToBigO(contribution) {
   return "O(1)";
 }
 
-function toBigOFromContribution(contribution) {
-  if (contribution === "n^2") return "O(n^2)";
-  if (contribution === "n") return "O(n)";
-  if (contribution === "stack") return "O(n)";
-  return "O(1)";
-}
-
 function combineTerms(terms = []) {
   if (!terms.length) return "O(1)";
   return terms.join(" + ");
@@ -127,9 +120,47 @@ function createStepFactory(steps, memory) {
   };
 }
 
+function getFunctionMap(program) {
+  const fnMap = new Map();
+  for (const node of program?.body || []) {
+    if (node?.type === "FunctionDeclaration" && node?.name) {
+      fnMap.set(node.name, node);
+    }
+  }
+  return fnMap;
+}
+
+function getEntryFunctionName(program, fnMap) {
+  if (fnMap.has("main")) return "main";
+
+  for (const node of program?.body || []) {
+    if (node?.type === "FunctionDeclaration" && node?.name) {
+      return node.name;
+    }
+  }
+
+  return null;
+}
+
+function processCallTargets(node, context) {
+  if (!node || typeof node !== "object") return;
+
+  const calls = collectCalls(node);
+  for (const call of calls) {
+    const fnName = call.name;
+    if (!fnName || !context.functionMap.has(fnName)) continue;
+    executeFunction(fnName, call.lineNumber || node.lineNumber, context);
+  }
+}
+
 function processStatement(node, context) {
   if (!node || typeof node !== "object") return;
-  const { emitStep, memory, contributions, currentFunction, contributionBuckets } = context;
+  const {
+    emitStep,
+    memory,
+    contributions,
+    contributionBuckets,
+  } = context;
 
   if (node.type === "VariableDeclaration") {
     const arrayContribution = inferArrayContribution(node.value);
@@ -172,27 +203,12 @@ function processStatement(node, context) {
       bubble: "We create a variable.\nTakes constant space.",
       complexityContribution: "1",
     });
+
+    processCallTargets(node.value, context);
     return;
   }
 
-  if (node.type === "FunctionDeclaration") {
-    const selfCalls = collectCalls(node.body || []).filter((call) => call.name === node.name);
-    if (selfCalls.length > 0) {
-      contributions.push("stack");
-      contributionBuckets.recursion += selfCalls.length;
-      emitStep({
-        lineNumber: node.lineNumber,
-        event: "space_recursion",
-        narration: "This function calls itself.",
-        bubble: "Recursive calls\nadd to the stack.",
-        complexityContribution: "stack",
-      });
-    }
-
-    const nestedContext = { ...context, currentFunction: node.name };
-    (node.body || []).forEach((child) => processStatement(child, nestedContext));
-    return;
-  }
+  if (node.type === "FunctionDeclaration") return;
 
   if (node.type === "WhileStatement" || node.type === "ForStatement") {
     emitStep({
@@ -204,36 +220,13 @@ function processStatement(node, context) {
     });
 
     (node.body || []).forEach((child) => processStatement(child, context));
+    processCallTargets(node.test, context);
+    processCallTargets(node.update, context);
     return;
   }
 
   if (node.type === "ExpressionStatement" && expressionHasCall(node.expression)) {
-    const calls = collectCalls(node.expression);
-    calls.forEach((call) => {
-      const isRecursiveCall = currentFunction && call.name === currentFunction;
-      const contribution = isRecursiveCall ? "stack" : "1";
-      contributions.push(contribution);
-      if (isRecursiveCall) {
-        contributionBuckets.recursion += 1;
-      } else {
-        contributionBuckets.functionCalls += 1;
-      }
-      memory.stack.push({ name: `${call.name}()`, value: "frame" });
-
-      emitStep({
-        lineNumber: call.lineNumber || node.lineNumber,
-        event: isRecursiveCall ? "space_recursive_call" : "space_function_call",
-        narration: isRecursiveCall
-          ? "The function calls itself again."
-          : "We call another function.",
-        bubble: isRecursiveCall
-          ? "Recursive calls\nadd to the stack."
-          : "Function call adds\none stack frame.",
-        complexityContribution: contribution,
-      });
-
-      memory.stack.pop();
-    });
+    processCallTargets(node.expression, context);
     return;
   }
 
@@ -248,10 +241,66 @@ function processStatement(node, context) {
     });
 
     if (node.type === "IfStatement") {
+      processCallTargets(node.test, context);
       (node.consequent || []).forEach((child) => processStatement(child, context));
       (node.alternate || []).forEach((child) => processStatement(child, context));
+      return;
+    }
+
+    if (node.type === "Assignment") {
+      processCallTargets(node.value, context);
+      return;
+    }
+
+    if (node.type === "ReturnStatement") {
+      processCallTargets(node.argument, context);
     }
   }
+}
+
+function executeFunction(functionName, callLineNumber, context) {
+  const fnNode = context.functionMap.get(functionName);
+  if (!fnNode) return;
+
+  const isRecursiveCall = context.callStack.includes(functionName);
+
+  context.memory.stack.push({ name: `${functionName}()`, value: "frame" });
+  context.contributions.push(isRecursiveCall ? "stack" : "1");
+  if (isRecursiveCall) {
+    context.contributionBuckets.recursion += 1;
+  } else {
+    context.contributionBuckets.functionCalls += 1;
+  }
+
+  context.emitStep({
+    lineNumber: fnNode.lineNumber || callLineNumber,
+    event: isRecursiveCall ? "space_recursive_call" : "space_function_call",
+    narration: isRecursiveCall
+      ? `Control enters ${functionName}() again.`
+      : `Control enters ${functionName}().`,
+    bubble: isRecursiveCall
+      ? `Move into ${functionName}().\nThis is recursive, so stack can grow.`
+      : `Move into ${functionName}().\nA stack frame is added.`,
+    complexityContribution: isRecursiveCall ? "stack" : "1",
+  });
+
+  if (!isRecursiveCall) {
+    const nestedContext = {
+      ...context,
+      currentFunction: functionName,
+      callStack: [...context.callStack, functionName],
+    };
+    (fnNode.body || []).forEach((child) => processStatement(child, nestedContext));
+  }
+
+  context.memory.stack.pop();
+  context.emitStep({
+    lineNumber: callLineNumber || fnNode.lineNumber,
+    event: "space_function_return",
+    narration: `Control returns from ${functionName}() to ${context.currentFunction || "caller"}().`,
+    bubble: `Return from ${functionName}().\nContinue in ${context.currentFunction || "caller"}().`,
+    complexityContribution: "1",
+  });
 }
 
 function buildSpaceComplexityTimeline(parsedRepresentation) {
@@ -267,16 +316,36 @@ function buildSpaceComplexityTimeline(parsedRepresentation) {
     functionCalls: 0,
   };
   const emitStep = createStepFactory(steps, memory);
+  const functionMap = getFunctionMap(program);
+  const entryFunctionName = getEntryFunctionName(program, functionMap);
 
-  (program.body || []).forEach((node) =>
-    processStatement(node, {
-      emitStep,
-      memory,
-      contributions,
-      contributionBuckets,
-      currentFunction: null,
-    }),
-  );
+  const baseContext = {
+    emitStep,
+    memory,
+    contributions,
+    contributionBuckets,
+    functionMap,
+    callStack: [],
+    currentFunction: "global",
+  };
+
+  if (entryFunctionName) {
+    emitStep({
+      lineNumber: functionMap.get(entryFunctionName)?.lineNumber || 1,
+      event: "space_entry",
+      narration: `Execution starts in ${entryFunctionName}().`,
+      bubble: `Start in ${entryFunctionName}().`,
+      complexityContribution: "1",
+    });
+    executeFunction(entryFunctionName, functionMap.get(entryFunctionName)?.lineNumber || 1, {
+      ...baseContext,
+      currentFunction: "global",
+    });
+  } else {
+    (program.body || [])
+      .filter((node) => node?.type !== "FunctionDeclaration")
+      .forEach((node) => processStatement(node, baseContext));
+  }
 
   const dominant = dominantContribution(contributions);
   const finalComplexity = contributionToBigO(dominant);
@@ -402,13 +471,29 @@ function getSpaceLineExplanation({ lineNumber, event }) {
   if (event?.bubble) return event.bubble;
   if (!lineNumber) return "Press Play and follow the highlighted line.";
 
-  if (lineNumber === 2) return "We create one number variable. That uses only a tiny fixed amount of memory.";
-  if (lineNumber === 3) return "We create one result variable. It also stays constant space.";
-  if (lineNumber === 4) return "The loop repeats, but it reuses the same memory each time.";
-  if (lineNumber === 5) return "We update one value. No growing array or extra storage is created.";
-  if (lineNumber === 6) return "Printing a value does not keep extra memory around.";
-  if (lineNumber === 7) return "We update the same variable again. Space still stays constant.";
-  if (lineNumber === 9) return "Final answer: O(1) space, because the program only keeps a few variables.";
+  if (event?.event === "space_entry") {
+    return "Execution starts at the entry function.";
+  }
+
+  if (event?.event === "space_function_call") {
+    return "Control moves into a function and pushes a stack frame.";
+  }
+
+  if (event?.event === "space_function_return") {
+    return "The function returns and its stack frame is removed.";
+  }
+
+  if (event?.event === "space_recursive_call") {
+    return "Recursive calls may add stack frames as depth grows.";
+  }
+
+  if (event?.event === "space_loop") {
+    return "Loops usually reuse existing variables unless new structures are created.";
+  }
+
+  if (event?.event === "space_array" || event?.event === "space_array_2d") {
+    return "This step allocates array storage, so memory grows with input size.";
+  }
 
   return "This line uses\nconstant extra space.";
 }
