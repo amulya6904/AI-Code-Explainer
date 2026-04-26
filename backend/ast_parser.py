@@ -104,7 +104,9 @@ def parse_code_to_structured_ast(code: str, language: str) -> dict:
             "variables_count": len(features["variables"]),
         },
         "features": features,
-        "ast": _serialize_node(root, source_bytes, max_depth=4),
+        # Keep enough depth for frontend timeline builders to inspect
+        # nested statements, call expressions, and function bodies.
+        "ast": _serialize_node(root, source_bytes, max_depth=80),
     }
 
 

@@ -33,6 +33,11 @@ export const requestHint = async (payload) => {
   return unwrap(response);
 };
 
+export const parseCodeToStructuredAst = async (payload) => {
+  const response = await API.post("/parse-ast", payload);
+  return unwrap(response);
+};
+
 // ─── Learning analytics ────────────────────────────────────────
 export const getLearningSummary = async (userId) => {
   const response = await API.get(`/learning-summary/${userId}`);

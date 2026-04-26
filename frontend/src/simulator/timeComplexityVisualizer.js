@@ -4,14 +4,6 @@ function createBaseTerm(nExp = 0, logExp = 0, constant = 1) {
   return { nExp, logExp, constant };
 }
 
-function addTerms(a, b) {
-  return {
-    nExp: a.nExp + b.nExp,
-    logExp: a.logExp + b.logExp,
-    constant: a.constant + b.constant,
-  };
-}
-
 function multiplyTerms(a, b) {
   return {
     nExp: a.nExp + b.nExp,
@@ -174,12 +166,6 @@ function inferLoopFactor(loopNode) {
   return { term: createBaseTerm(1, 0, 1), iterations: "n", growth: "linear" };
 }
 
-function loopTitle(depth, ordinal) {
-  if (depth === 1 && ordinal === 1) return "Outer Loop";
-  if (depth === 2 && ordinal === 1) return "Inner Loop";
-  return `Loop L${depth}.${ordinal}`;
-}
-
 function conditionTitle(depth, ordinal) {
   if (depth === 1 && ordinal === 1) return "Condition";
   return `Condition L${depth}.${ordinal}`;
@@ -231,7 +217,51 @@ function loopVisual(depth) {
   };
 }
 
-function buildLoopTimeline(node, context, depth) {
+function getFunctionMap(program) {
+  const fnMap = new Map();
+  for (const node of program?.body || []) {
+    if (node?.type === "FunctionDeclaration" && node?.name) {
+      fnMap.set(node.name, node);
+    }
+  }
+  return fnMap;
+}
+
+function getEntryFunctionName(program, fnMap) {
+  if (fnMap.has("main")) return "main";
+
+  for (const node of program?.body || []) {
+    if (node?.type === "FunctionDeclaration" && node?.name) {
+      return node.name;
+    }
+  }
+
+  return null;
+}
+
+function collectCalls(node, calls = []) {
+  if (!node || typeof node !== "object") return calls;
+
+  if (node.type === "CallExpression") {
+    calls.push({
+      name: node.callee?.name || node.name || null,
+      lineNumber: node.lineNumber || null,
+    });
+  }
+
+  for (const key of Object.keys(node)) {
+    const value = node[key];
+    if (Array.isArray(value)) {
+      value.forEach((child) => collectCalls(child, calls));
+    } else if (value && typeof value === "object") {
+      collectCalls(value, calls);
+    }
+  }
+
+  return calls;
+}
+
+function buildLoopTimeline(node, context, depth, state) {
   context.loopOrdinalByDepth[depth] = (context.loopOrdinalByDepth[depth] || 0) + 1;
   const ordinal = context.loopOrdinalByDepth[depth];
   const loopMeta = inferLoopFactor(node);
@@ -270,7 +300,7 @@ function buildLoopTimeline(node, context, depth) {
     },
   });
 
-  const nestedTerms = analyzeStatements(node.body || [], context, depth + 1);
+  const nestedTerms = analyzeStatements(node.body || [], context, depth + 1, state);
   const bodyTerm = nestedTerms.length ? dominantTerm(nestedTerms) : createBaseTerm();
   const loopCost = multiplyTerms(loopMeta.term, bodyTerm);
 
@@ -297,7 +327,7 @@ function buildLoopTimeline(node, context, depth) {
   return loopCost;
 }
 
-function buildConditionTimeline(node, context, depth) {
+function buildConditionTimeline(node, context, depth, state) {
   context.conditionOrdinalByDepth[depth] = (context.conditionOrdinalByDepth[depth] || 0) + 1;
   const ordinal = context.conditionOrdinalByDepth[depth];
 
@@ -334,8 +364,8 @@ function buildConditionTimeline(node, context, depth) {
     },
   });
 
-  const consequentTerms = analyzeStatements(node.consequent || [], context, depth + 1);
-  const alternateTerms = analyzeStatements(node.alternate || [], context, depth + 1);
+  const consequentTerms = analyzeStatements(node.consequent || [], context, depth + 1, state);
+  const alternateTerms = analyzeStatements(node.alternate || [], context, depth + 1, state);
   const branchTerm = dominantTerm([
     ...(consequentTerms.length ? consequentTerms : [createBaseTerm()]),
     ...(alternateTerms.length ? alternateTerms : [createBaseTerm()]),
@@ -363,26 +393,97 @@ function buildConditionTimeline(node, context, depth) {
   return branchTerm;
 }
 
-function analyzeStatements(statements, context, depth) {
+function analyzeStatements(statements, context, depth, state) {
   const terms = [];
 
   for (const statement of statements || []) {
     if (!statement || typeof statement !== "object") continue;
 
     if (statement.type === "ForStatement" || statement.type === "WhileStatement") {
-      terms.push(buildLoopTimeline(statement, context, depth));
+      terms.push(buildLoopTimeline(statement, context, depth, state));
       continue;
     }
 
     if (statement.type === "IfStatement") {
-      terms.push(buildConditionTimeline(statement, context, depth));
+      terms.push(buildConditionTimeline(statement, context, depth, state));
       continue;
     }
 
     if (statement.type === "FunctionDeclaration") {
-      const nestedTerms = analyzeStatements(statement.body || [], context, depth + 1);
-      terms.push(dominantTerm(nestedTerms.length ? nestedTerms : [createBaseTerm()]));
       continue;
+    }
+
+    const calls = collectCalls(statement);
+    for (const call of calls) {
+      const fnName = call.name;
+      if (!fnName || !state.functionMap.has(fnName)) continue;
+
+      const fnNode = state.functionMap.get(fnName);
+
+      emitEvent(context, {
+        lineNumber: fnNode?.lineNumber || call.lineNumber || statement.lineNumber || null,
+        event: "enter_function",
+        depth,
+        title: `Enter ${fnName}()`,
+        description: `Control moves into ${fnName}().`,
+        visual: {
+          level: depth,
+          color: "cyan",
+          highlight: true,
+          blockType: "function_call",
+        },
+        animation: {
+          type: "highlight_line",
+          duration: 320,
+        },
+      });
+
+      if (state.callStack.includes(fnName)) {
+        emitEvent(context, {
+          lineNumber: call.lineNumber || statement.lineNumber || null,
+          event: "recursive_call",
+          depth,
+          title: `Recursive call to ${fnName}()`,
+          description: "Recursion detected, so deep expansion is skipped in this visualization.",
+          visual: {
+            level: depth,
+            color: "cyan",
+            highlight: true,
+            blockType: "function_call",
+          },
+          animation: {
+            type: "fade_in_text",
+            duration: 220,
+          },
+        });
+        terms.push(createBaseTerm(1, 0, 1));
+      } else {
+        const nestedState = {
+          ...state,
+          callStack: [...state.callStack, fnName],
+          currentFunction: fnName,
+        };
+        const fnTerms = analyzeStatements(fnNode.body || [], context, depth + 1, nestedState);
+        terms.push(dominantTerm(fnTerms.length ? fnTerms : [createBaseTerm()]));
+      }
+
+      emitEvent(context, {
+        lineNumber: call.lineNumber || statement.lineNumber || null,
+        event: "return_function",
+        depth,
+        title: `Return to ${state.currentFunction || "caller"}()`,
+        description: "Control returns to the previous function.",
+        visual: {
+          level: depth,
+          color: "cyan",
+          highlight: true,
+          blockType: "function_return",
+        },
+        animation: {
+          type: "highlight_line",
+          duration: 280,
+        },
+      });
     }
 
     emitEvent(context, {
@@ -434,7 +535,67 @@ function buildSummaryTimeline(context, finalTerm, terms) {
 export function buildTimeComplexityTimeline(parsedRepresentation) {
   const program = normalizeInput(parsedRepresentation);
   const context = createTimelineContext();
-  const terms = analyzeStatements(program.body || [], context, 1);
+  const functionMap = getFunctionMap(program);
+  const entryFunctionName = getEntryFunctionName(program, functionMap);
+
+  if (entryFunctionName) {
+    const entryNode = functionMap.get(entryFunctionName);
+    emitEvent(context, {
+      lineNumber: entryNode?.lineNumber || 1,
+      event: "enter_function",
+      depth: 1,
+      title: `Start in ${entryFunctionName}()`,
+      description: "Execution starts at the entry function.",
+      visual: {
+        level: 1,
+        color: "cyan",
+        highlight: true,
+        blockType: "function_call",
+      },
+      animation: {
+        type: "highlight_line",
+        duration: 320,
+      },
+    });
+  }
+
+  const terms = entryFunctionName
+    ? analyzeStatements(functionMap.get(entryFunctionName)?.body || [], context, 1, {
+        functionMap,
+        callStack: [entryFunctionName],
+        currentFunction: entryFunctionName,
+      })
+    : analyzeStatements(
+        (program.body || []).filter((node) => node?.type !== "FunctionDeclaration"),
+        context,
+        1,
+        {
+          functionMap,
+          callStack: ["<global>"],
+          currentFunction: "global",
+        },
+      );
+
+  if (entryFunctionName) {
+    emitEvent(context, {
+      lineNumber: functionMap.get(entryFunctionName)?.lineNumber || 1,
+      event: "return_function",
+      depth: 1,
+      title: `Exit ${entryFunctionName}()`,
+      description: "Execution returns after finishing the entry function.",
+      visual: {
+        level: 1,
+        color: "cyan",
+        highlight: true,
+        blockType: "function_return",
+      },
+      animation: {
+        type: "highlight_line",
+        duration: 280,
+      },
+    });
+  }
+
   const effectiveTerms = terms.length ? terms : [createBaseTerm()];
   const finalTerm = dominantTerm(effectiveTerms);
 
