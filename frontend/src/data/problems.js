@@ -1006,6 +1006,1584 @@ export const problems = [
     }
 }`,
   },
+  {
+    id: 25,
+    title: "Print Name and Age",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Output"],
+    description:
+      "A student profile screen needs to show a learner's name and age in one friendly sentence. Use the declared variables `name` and `age` to print the exact sentence `Aarav is 14 years old.`.",
+    note1:
+      "Build the sentence from the variables instead of typing the whole final sentence as one literal.",
+    note2:
+      "Place spaces inside the string pieces you concatenate so the words do not run together.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "name = \"Aarav\", age = 14",
+        output: "Aarav is 14 years old.",
+        explanation:
+          "The program combines the name, age, and surrounding words into one readable sentence.",
+      },
+    ],
+    constraints: [
+      "Use both declared variables in the output.",
+      "Print exactly one sentence with the final period.",
+    ],
+    followUp:
+      "Can you print the same profile as two labeled lines: one for name and one for age?",
+    beginnerTips: [
+      "Use `+` to join strings and variables.",
+      "String literals need double quotes, such as `\" is \"`.",
+      "Print once after the full sentence has been assembled.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        String name = "Aarav";
+        int age = 14;
+        // Print the sentence using name and age
+    }
+}`,
+  },
+  {
+    id: 26,
+    title: "Add Two Integers",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Arithmetic"],
+    description:
+      "A shopkeeper enters the prices of two notebooks: `firstPrice = 18` and `secondPrice = 24`. Calculate and print the total bill amount.",
+    note1:
+      "Add the two integer prices and print the resulting total.",
+    note2:
+      "Store the sum in a variable before printing so the calculation is easy to read.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "firstPrice = 18, secondPrice = 24",
+        output: "42",
+        explanation:
+          "The total bill is 18 + 24, which is 42.",
+      },
+    ],
+    constraints: [
+      "Use the declared price variables.",
+      "Print only the numeric total.",
+    ],
+    followUp:
+      "Can you add a third item price and print the new total?",
+    beginnerTips: [
+      "The `+` operator adds numbers.",
+      "An `int` is suitable for whole-number prices here.",
+      "Do not put quotes around the sum variable when printing it.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int firstPrice = 18;
+        int secondPrice = 24;
+        // Calculate and print the total bill
+    }
+}`,
+  },
+  {
+    id: 27,
+    title: "Multiply Two Numbers",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Arithmetic"],
+    description:
+      "A classroom has 9 benches, and each bench seats 6 students. Calculate and print the total seating capacity.",
+    note1:
+      "Multiply the number of benches by the number of students per bench.",
+    note2:
+      "Java uses `*` for multiplication, not `x`.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "benches = 9, studentsPerBench = 6",
+        output: "54",
+        explanation:
+          "9 benches with 6 students each can seat 54 students.",
+      },
+    ],
+    constraints: [
+      "Use the declared variables in the multiplication.",
+      "Print only the capacity number.",
+    ],
+    followUp:
+      "Can you calculate the capacity for two classrooms and print their combined capacity?",
+    beginnerTips: [
+      "Create a variable such as `capacity` for the result.",
+      "Multiplication happens before addition in mixed expressions.",
+      "Keep variable names descriptive so the formula is clear.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int benches = 9;
+        int studentsPerBench = 6;
+        // Calculate and print the total seating capacity
+    }
+}`,
+  },
+  {
+    id: 28,
+    title: "Calculate Rectangle Area",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Math"],
+    description:
+      "A gardener wants to cover a rectangular flower bed that is 12 meters long and 5 meters wide. Calculate and print the area that must be covered.",
+    note1:
+      "Use the rectangle area formula: length multiplied by width.",
+    note2:
+      "The result should be a number only; do not print units like square meters.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "length = 12, width = 5",
+        output: "60",
+        explanation:
+          "The area is 12 * 5, which equals 60.",
+      },
+    ],
+    constraints: [
+      "Use the declared length and width variables.",
+      "Print only the calculated area.",
+    ],
+    followUp:
+      "Can you also calculate how much fencing is needed around the flower bed?",
+    beginnerTips: [
+      "Area formulas are a good way to practice arithmetic expressions.",
+      "Use `int area = length * width;` as the general pattern.",
+      "Print after the calculation, not before it.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int length = 12;
+        int width = 5;
+        // Calculate and print the flower bed area
+    }
+}`,
+  },
+  {
+    id: 29,
+    title: "Calculate Simple Average",
+    topic: "Java Basics",
+    difficulty: "Medium",
+    topics: ["Java Basics", "Math"],
+    description:
+      "A teacher records three quiz scores: 80, 90, and 70. Calculate the average score and print it rounded to one decimal place.",
+    note1:
+      "Add all three scores, then divide by the number of scores.",
+    note2:
+      "Use decimal division so the average keeps `.0` when needed.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "quiz1 = 80, quiz2 = 90, quiz3 = 70",
+        output: "80.0",
+        explanation:
+          "The total is 240, and 240 divided by 3 is 80.0 when formatted to one decimal place.",
+      },
+    ],
+    constraints: [
+      "Use the three declared quiz score variables.",
+      "Print exactly one digit after the decimal point.",
+    ],
+    followUp:
+      "Can you calculate the average after dropping the lowest quiz score?",
+    beginnerTips: [
+      "Dividing by `3.0` avoids integer-only division.",
+      "Use a `double` variable for the average.",
+      "`String.format(\"%.1f\", average)` controls the displayed precision.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int quiz1 = 80;
+        int quiz2 = 90;
+        int quiz3 = 70;
+        // Calculate and print the average rounded to 1 decimal
+    }
+}`,
+  },
+  {
+    id: 30,
+    title: "Convert Minutes to Hours and Minutes",
+    topic: "Java Basics",
+    difficulty: "Medium",
+    topics: ["Java Basics", "Arithmetic"],
+    description:
+      "A movie lasts 135 minutes. Convert the duration into hours and remaining minutes, then print it in the format `2 hours 15 minutes`.",
+    note1:
+      "Calculate whole hours and leftover minutes from the total minutes.",
+    note2:
+      "Integer division gives the hours, and modulo gives the remainder minutes.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "totalMinutes = 135",
+        output: "2 hours 15 minutes",
+        explanation:
+          "135 minutes is 2 full hours with 15 minutes remaining.",
+      },
+    ],
+    constraints: [
+      "Use arithmetic operators instead of hardcoding the converted duration.",
+      "Match the output format exactly.",
+    ],
+    followUp:
+      "Can you convert a number of seconds into hours, minutes, and seconds?",
+    beginnerTips: [
+      "`totalMinutes / 60` gives whole hours.",
+      "`totalMinutes % 60` gives leftover minutes.",
+      "Concatenate numbers and words in the required order.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int totalMinutes = 135;
+        // Convert to hours and minutes, then print the formatted result
+    }
+}`,
+  },
+  {
+    id: 31,
+    title: "Calculate Perimeter of Square",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Math"],
+    description:
+      "A craft project uses a square tile with side length 9 cm. Calculate and print the total border length of the tile.",
+    note1:
+      "The perimeter of a square is 4 times its side length.",
+    note2:
+      "Only print the number; the checker does not expect `cm`.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "side = 9",
+        output: "36",
+        explanation:
+          "A square has four equal sides, so 4 * 9 = 36.",
+      },
+    ],
+    constraints: [
+      "Use the declared side variable.",
+      "Print only the perimeter value.",
+    ],
+    followUp:
+      "Can you calculate both the perimeter and area of the square?",
+    beginnerTips: [
+      "Use multiplication for repeated addition.",
+      "A named variable like `perimeter` makes the code readable.",
+      "Formula problems are a good place to practice clear variable names.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int side = 9;
+        // Calculate and print the perimeter
+    }
+}`,
+  },
+  {
+    id: 32,
+    title: "Find Remainder",
+    topic: "Java Basics",
+    difficulty: "Easy",
+    topics: ["Java Basics", "Modulo"],
+    description:
+      "A teacher divides 29 pencils equally among groups of 5 students. Print how many pencils are left over.",
+    note1:
+      "Use the modulo operator to find the leftover amount after division.",
+    note2:
+      "The quotient is not needed for this task; only the remainder is printed.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "pencils = 29, groupSize = 5",
+        output: "4",
+        explanation:
+          "Five groups can receive 25 pencils, leaving 4 pencils unused.",
+      },
+    ],
+    constraints: [
+      "Use `%` with the declared variables.",
+      "Print only the leftover count.",
+    ],
+    followUp:
+      "Can you also print how many full groups can be formed?",
+    beginnerTips: [
+      "Modulo answers the question: what is left after division?",
+      "`29 % 5` evaluates to 4.",
+      "Modulo is used often in conditions and loops too.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int pencils = 29;
+        int groupSize = 5;
+        // Print how many pencils are left over
+    }
+}`,
+  },
+  {
+    id: 33,
+    title: "Swap Without Third Variable",
+    topic: "Java Basics",
+    difficulty: "Hard",
+    topics: ["Java Basics", "Variables"],
+    description:
+      "Two scoreboard values were entered in the wrong order: `homeScore = 8` and `awayScore = 3`. Swap them without using a third variable, then print the corrected order.",
+    note1:
+      "Change the values stored in the two existing variables so they trade places.",
+    note2:
+      "Addition and subtraction can move values around, but do each step carefully.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "homeScore = 8, awayScore = 3",
+        output: "3 8",
+        explanation:
+          "After swapping, the first variable holds 3 and the second holds 8.",
+      },
+    ],
+    constraints: [
+      "Do not declare another variable for the swap.",
+      "Print the two final values on one line separated by one space.",
+    ],
+    followUp:
+      "Can you explain why this technique is risky for very large integers?",
+    beginnerTips: [
+      "Track the value of each variable after every assignment.",
+      "Assignment changes the variable on the left side.",
+      "Print only after both variables have been updated.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int homeScore = 8;
+        int awayScore = 3;
+        // Swap the scores without using a third variable
+        System.out.println(homeScore + " " + awayScore);
+    }
+}`,
+  },
+  {
+    id: 34,
+    title: "Calculate BMI",
+    topic: "Java Basics",
+    difficulty: "Hard",
+    topics: ["Java Basics", "Math"],
+    description:
+      "A health app stores a user's weight as 68.0 kg and height as 1.7 meters. Calculate the BMI and print it rounded to one decimal place.",
+    note1:
+      "Use the BMI formula: weight divided by height squared.",
+    note2:
+      "Use parentheses around `height * height` so the denominator is calculated first.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "weight = 68.0, height = 1.7",
+        output: "23.5",
+        explanation:
+          "68.0 / (1.7 * 1.7) rounds to 23.5.",
+      },
+    ],
+    constraints: [
+      "Use `double` values for the calculation.",
+      "Print exactly one digit after the decimal point.",
+    ],
+    followUp:
+      "Can you use conditions to classify the BMI range after calculating it?",
+    beginnerTips: [
+      "Decimal measurements should usually use `double`.",
+      "Complex formulas are easier to read when split into variables.",
+      "Formatting controls the output without changing the actual calculation idea.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        double weight = 68.0;
+        double height = 1.7;
+        // Calculate and print BMI rounded to 1 decimal
+    }
+}`,
+  },
+  {
+    id: 35,
+    title: "Check Voting Eligibility",
+    topic: "Conditions",
+    difficulty: "Easy",
+    topics: ["Conditions", "Comparison"],
+    description:
+      "A registration form stores a person's age as `age = 19`. Print `Eligible` if the person can vote, otherwise print `Not Eligible`.",
+    note1:
+      "Use a condition to compare the age with the voting age requirement of 18.",
+    note2:
+      "The boundary matters: someone who is exactly 18 is eligible.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "age = 19",
+        output: "Eligible",
+        explanation:
+          "19 is greater than or equal to 18, so the person is eligible.",
+      },
+    ],
+    constraints: [
+      "Use an `if` / `else` statement.",
+      "Print exactly one of the two allowed messages.",
+    ],
+    followUp:
+      "Can you print how many years remain when the person is under 18?",
+    beginnerTips: [
+      "Use `>=` for at least comparisons.",
+      "The `if` block handles the true case.",
+      "The `else` block handles everything that did not pass the condition.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int age = 19;
+        // Print Eligible or Not Eligible
+    }
+}`,
+  },
+  {
+    id: 36,
+    title: "Check Divisibility by 5",
+    topic: "Conditions",
+    difficulty: "Easy",
+    topics: ["Conditions", "Modulo"],
+    description:
+      "A game awards a bonus when a score is a multiple of 5. Given `score = 45`, print `Divisible` if it earns the bonus, otherwise print `Not Divisible`.",
+    note1:
+      "Check whether the score leaves no remainder when divided by 5.",
+    note2:
+      "Modulo gives the remainder; a remainder of 0 means exact divisibility.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "score = 45",
+        output: "Divisible",
+        explanation:
+          "45 divided by 5 leaves remainder 0.",
+      },
+    ],
+    constraints: [
+      "Use `%` in the condition.",
+      "Print exactly `Divisible` or `Not Divisible`.",
+    ],
+    followUp:
+      "Can you check whether a score is divisible by both 5 and 10?",
+    beginnerTips: [
+      "Write comparisons with `==`, not `=`.",
+      "`score % 5 == 0` is a boolean expression.",
+      "Keep output strings exactly as requested.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int score = 45;
+        // Print Divisible or Not Divisible
+    }
+}`,
+  },
+  {
+    id: 37,
+    title: "Check Divisibility by 3 and 7",
+    topic: "Conditions",
+    difficulty: "Medium",
+    topics: ["Conditions", "Logic"],
+    description:
+      "A puzzle accepts only numbers that are divisible by both 3 and 7. Given `code = 84`, print `Yes` if it is accepted, otherwise print `No`.",
+    note1:
+      "Write two divisibility checks and require both to be true.",
+    note2:
+      "The logical AND operator `&&` is useful when two rules must pass together.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "code = 84",
+        output: "Yes",
+        explanation:
+          "84 is divisible by 3 and also divisible by 7.",
+      },
+    ],
+    constraints: [
+      "Use modulo for both divisibility checks.",
+      "Print only `Yes` or `No`.",
+    ],
+    followUp:
+      "Can you print `Only 3`, `Only 7`, or `Both` for more detailed feedback?",
+    beginnerTips: [
+      "Break the condition into two smaller ideas first.",
+      "Use parentheses if the combined condition feels hard to read.",
+      "`&&` is true only when both sides are true.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int code = 84;
+        // Print Yes if code is divisible by both 3 and 7
+    }
+}`,
+  },
+  {
+    id: 38,
+    title: "Find Smaller of Two Numbers",
+    topic: "Conditions",
+    difficulty: "Easy",
+    topics: ["Conditions", "Comparison"],
+    description:
+      "A delivery app compares two route distances: `routeA = 32` km and `routeB = 18` km. Print the shorter distance.",
+    note1:
+      "Compare the two route values and print the smaller one.",
+    note2:
+      "An `if` / `else` is enough because there are only two choices.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "routeA = 32, routeB = 18",
+        output: "18",
+        explanation:
+          "Route B is shorter, so 18 is printed.",
+      },
+    ],
+    constraints: [
+      "Do not use `Math.min`.",
+      "Print only the smaller number.",
+    ],
+    followUp:
+      "Can you print `Same distance` when both routes are equal?",
+    beginnerTips: [
+      "Use `<` to check whether one value is smaller than another.",
+      "Think through what the `else` branch means.",
+      "Only one value should be printed.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int routeA = 32;
+        int routeB = 18;
+        // Print the shorter route distance
+    }
+}`,
+  },
+  {
+    id: 39,
+    title: "Check Pass or Fail",
+    topic: "Conditions",
+    difficulty: "Easy",
+    topics: ["Conditions", "If-Else"],
+    description:
+      "An exam system stores a student's marks as `marks = 41`. Print `Pass` if the marks meet the passing score, otherwise print `Fail`.",
+    note1:
+      "The student passes when marks are 40 or higher.",
+    note2:
+      "Use `>=` so exactly 40 is treated as a pass.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "marks = 41",
+        output: "Pass",
+        explanation:
+          "41 is above the passing mark of 40.",
+      },
+    ],
+    constraints: [
+      "Marks are between 0 and 100.",
+      "Print exactly `Pass` or `Fail`.",
+    ],
+    followUp:
+      "Can you add `Distinction` for marks 75 and above?",
+    beginnerTips: [
+      "Boundary values are important in conditions.",
+      "Use `else` for the failing case.",
+      "Avoid printing both results by putting prints inside separate branches.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int marks = 41;
+        // Print Pass or Fail
+    }
+}`,
+  },
+  {
+    id: 40,
+    title: "Check Character is Vowel or Consonant",
+    topic: "Conditions",
+    difficulty: "Medium",
+    topics: ["Conditions", "Characters"],
+    description:
+      "A spelling helper receives the lowercase character `ch = 'e'`. Print `Vowel` if it is a vowel, otherwise print `Consonant`.",
+    note1:
+      "Compare the character against the five lowercase vowels.",
+    note2:
+      "Use `||` because matching any one vowel is enough.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "ch = 'e'",
+        output: "Vowel",
+        explanation:
+          "The character `e` is one of the lowercase vowels.",
+      },
+    ],
+    constraints: [
+      "Assume `ch` is a lowercase English letter.",
+      "Print only `Vowel` or `Consonant`.",
+    ],
+    followUp:
+      "Can you handle uppercase letters without duplicating every condition?",
+    beginnerTips: [
+      "Character literals use single quotes, like `'a'`.",
+      "Use `==` to compare primitive `char` values.",
+      "Long conditions become easier to read when split across lines.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        char ch = 'e';
+        // Print Vowel or Consonant
+    }
+}`,
+  },
+  {
+    id: 41,
+    title: "Check Number Range",
+    topic: "Conditions",
+    difficulty: "Medium",
+    topics: ["Conditions", "Logic"],
+    description:
+      "A scholarship form accepts scores from 50 to 100 inclusive. Given `score = 75`, print `In Range` if the score is valid, otherwise print `Out of Range`.",
+    note1:
+      "Check both the lower boundary and the upper boundary.",
+    note2:
+      "Use `&&` because the score must satisfy both range checks.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "score = 75",
+        output: "In Range",
+        explanation:
+          "75 is at least 50 and at most 100.",
+      },
+    ],
+    constraints: [
+      "Include both 50 and 100 as valid values.",
+      "Print exactly one of the two range messages.",
+    ],
+    followUp:
+      "Can you print `Too Low` and `Too High` as separate messages?",
+    beginnerTips: [
+      "Range checks often need two comparisons.",
+      "`score >= 50` checks the lower end.",
+      "`score <= 100` checks the upper end.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int score = 75;
+        // Print In Range or Out of Range
+    }
+}`,
+  },
+  {
+    id: 42,
+    title: "Electricity Bill Slab",
+    topic: "Conditions",
+    difficulty: "Hard",
+    topics: ["Conditions", "If-Else"],
+    description:
+      "An electricity board charges 5 per unit for the first 100 units and 8 per unit for each unit above 100. Given `units = 120`, calculate and print the total bill.",
+    note1:
+      "Use one calculation for customers at or below 100 units and another for customers above 100 units.",
+    note2:
+      "For extra units, subtract 100 first so only the additional units use the higher rate.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "units = 120",
+        output: "660",
+        explanation:
+          "The bill is 100 * 5 plus 20 * 8, which totals 660.",
+      },
+    ],
+    constraints: [
+      "Units are non-negative whole numbers.",
+      "Print only the final bill amount.",
+    ],
+    followUp:
+      "Can you add a third slab for units above 200?",
+    beginnerTips: [
+      "Slab problems are a common use for `if` / `else`.",
+      "Calculate the base cost separately from the extra cost.",
+      "Store the bill in a variable and print it once.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int units = 120;
+        // Calculate and print the electricity bill
+    }
+}`,
+  },
+  {
+    id: 43,
+    title: "Simple Login Check",
+    topic: "Conditions",
+    difficulty: "Hard",
+    topics: ["Conditions", "Strings"],
+    description:
+      "A small app checks login details. Given `username = \"admin\"` and `password = \"java123\"`, print `Login Successful` only when both match the saved credentials.",
+    note1:
+      "Check the username and password separately, then combine the checks.",
+    note2:
+      "Use `.equals()` for string content comparison in Java.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "username = \"admin\", password = \"java123\"",
+        output: "Login Successful",
+        explanation:
+          "Both entered values match the expected login details.",
+      },
+    ],
+    constraints: [
+      "Do not compare strings with `==`.",
+      "Print exactly `Login Successful` or `Login Failed`.",
+    ],
+    followUp:
+      "Can you print a separate message for an incorrect username and an incorrect password?",
+    beginnerTips: [
+      "Strings are objects, so `.equals()` checks their text.",
+      "Use `&&` when both credentials must be correct.",
+      "Keep expected credentials as clear string literals.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        String username = "admin";
+        String password = "java123";
+        // Print Login Successful or Login Failed
+    }
+}`,
+  },
+  {
+    id: 44,
+    title: "Triangle Validity Check",
+    topic: "Conditions",
+    difficulty: "Hard",
+    topics: ["Conditions", "Geometry"],
+    description:
+      "A drawing program receives three side lengths: `a = 5`, `b = 7`, and `c = 10`. Print `Valid` if these sides can form a triangle, otherwise print `Invalid`.",
+    note1:
+      "Check that the sum of every pair of sides is greater than the remaining side.",
+    note2:
+      "All three triangle inequality checks must pass for the triangle to be valid.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "a = 5, b = 7, c = 10",
+        output: "Valid",
+        explanation:
+          "Each pair of sides adds up to more than the third side.",
+      },
+    ],
+    constraints: [
+      "Assume all side lengths are positive integers.",
+      "Print only `Valid` or `Invalid`.",
+    ],
+    followUp:
+      "Can you classify a valid triangle as equilateral, isosceles, or scalene?",
+    beginnerTips: [
+      "Geometry rules often translate directly into boolean expressions.",
+      "Use `&&` to require all triangle checks.",
+      "Write each side-sum comparison clearly before combining them.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int a = 5;
+        int b = 7;
+        int c = 10;
+        // Print Valid or Invalid
+    }
+}`,
+  },
+  {
+    id: 45,
+    title: "Print Numbers 1 to N",
+    topic: "Loops",
+    difficulty: "Easy",
+    topics: ["Loops", "For Loop"],
+    description:
+      "A ticket counter needs to display token numbers from 1 through `n = 5`. Print each token number on its own line.",
+    note1:
+      "Use a loop counter that starts at 1 and increases until it reaches n.",
+    note2:
+      "The condition should include n, so the final number 5 is printed.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 5",
+        output: "1\\n2\\n3\\n4\\n5",
+        explanation:
+          "The loop prints every token number from 1 to 5.",
+      },
+    ],
+    constraints: [
+      "Use a loop instead of five separate print statements.",
+      "Print exactly one number per line.",
+    ],
+    followUp:
+      "Can you print the same numbers on one line separated by spaces?",
+    beginnerTips: [
+      "A `for` loop is ideal when you know the start and end values.",
+      "The loop counter changes automatically after each iteration.",
+      "Use `println` when each value needs its own line.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 5;
+        // Print numbers from 1 to n
+    }
+}`,
+  },
+  {
+    id: 46,
+    title: "Print Numbers N to 1",
+    topic: "Loops",
+    difficulty: "Easy",
+    topics: ["Loops", "For Loop"],
+    description:
+      "A launch screen counts down from `n = 5` to 1 before starting. Print each countdown number on its own line.",
+    note1:
+      "Use a loop counter that starts at n and decreases by 1 each time.",
+    note2:
+      "The loop should continue while the counter is at least 1.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 5",
+        output: "5\\n4\\n3\\n2\\n1",
+        explanation:
+          "The countdown prints 5 first and 1 last.",
+      },
+    ],
+    constraints: [
+      "Use a loop with a decrementing counter.",
+      "Print exactly one number per line.",
+    ],
+    followUp:
+      "Can you print `Go!` after the countdown finishes?",
+    beginnerTips: [
+      "Use `i--` to reduce a counter by 1.",
+      "The starting value can be the variable `n`.",
+      "Check that your loop does not stop before printing 1.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 5;
+        // Print numbers from n down to 1
+    }
+}`,
+  },
+  {
+    id: 47,
+    title: "Sum of Even Numbers",
+    topic: "Loops",
+    difficulty: "Easy",
+    topics: ["Loops", "Aggregation"],
+    description:
+      "A math worksheet asks for the sum of all even numbers from 1 to `n = 10`. Calculate and print that sum.",
+    note1:
+      "Loop through the numbers and add only the even ones to an accumulator.",
+    note2:
+      "Use modulo to test whether the current number is even.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 10",
+        output: "30",
+        explanation:
+          "2 + 4 + 6 + 8 + 10 equals 30.",
+      },
+    ],
+    constraints: [
+      "Use a loop and an accumulator variable.",
+      "Print only the final sum.",
+    ],
+    followUp:
+      "Can you solve it by making the loop jump by 2 each time?",
+    beginnerTips: [
+      "An accumulator usually starts at 0.",
+      "`i % 2 == 0` identifies even numbers.",
+      "Print after the loop, not during every iteration.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 10;
+        // Sum and print the even numbers from 1 to n
+    }
+}`,
+  },
+  {
+    id: 48,
+    title: "Sum of Odd Numbers",
+    topic: "Loops",
+    difficulty: "Easy",
+    topics: ["Loops", "Aggregation"],
+    description:
+      "A number game scores only odd positions from 1 to `n = 9`. Calculate and print the sum of those odd position numbers.",
+    note1:
+      "Loop from 1 to n and add only numbers that are odd.",
+    note2:
+      "A number is odd when dividing by 2 leaves a remainder.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 9",
+        output: "25",
+        explanation:
+          "1 + 3 + 5 + 7 + 9 equals 25.",
+      },
+    ],
+    constraints: [
+      "Use a loop and a sum variable.",
+      "Print only the final sum.",
+    ],
+    followUp:
+      "Can you also count how many odd numbers were added?",
+    beginnerTips: [
+      "Use `i % 2 != 0` to detect odd values.",
+      "Add matching values to `sum` with `sum += i`.",
+      "Keep the print statement outside the loop.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 9;
+        // Sum and print the odd numbers from 1 to n
+    }
+}`,
+  },
+  {
+    id: 49,
+    title: "Print Squares from 1 to N",
+    topic: "Loops",
+    difficulty: "Medium",
+    topics: ["Loops", "Math"],
+    description:
+      "A practice table needs the square values for numbers 1 through `n = 5`. Print each square on its own line.",
+    note1:
+      "For each loop value, multiply it by itself and print the result.",
+    note2:
+      "Calculate the square inside the loop so every number gets its own result.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 5",
+        output: "1\\n4\\n9\\n16\\n25",
+        explanation:
+          "The program prints 1 squared through 5 squared.",
+      },
+    ],
+    constraints: [
+      "Use a loop from 1 through n.",
+      "Print one square per line.",
+    ],
+    followUp:
+      "Can you print cubes from 1 to n instead?",
+    beginnerTips: [
+      "`i * i` gives the square of the current number.",
+      "The loop counter can be used directly in formulas.",
+      "Use `println` so each square appears on a new line.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 5;
+        // Print squares from 1 to n
+    }
+}`,
+  },
+  {
+    id: 50,
+    title: "Reverse Digits of a Number",
+    topic: "Loops",
+    difficulty: "Medium",
+    topics: ["Loops", "Digits"],
+    description:
+      "A number display must show the digits of `n = 1234` in reverse order. Reverse the digits using arithmetic and print the reversed number.",
+    note1:
+      "Repeatedly take the last digit from the number and attach it to a new reversed value.",
+    note2:
+      "Modulo gets the last digit, and integer division removes it.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 1234",
+        output: "4321",
+        explanation:
+          "The digits 1, 2, 3, 4 become 4, 3, 2, 1.",
+      },
+    ],
+    constraints: [
+      "Do not convert the number to a string.",
+      "Use a loop and arithmetic operations.",
+    ],
+    followUp:
+      "Can you preserve leading zeroes when reversing a number like 1200?",
+    beginnerTips: [
+      "Start the reversed number at 0.",
+      "Use `digit = n % 10` to read the last digit.",
+      "Use `reversed = reversed * 10 + digit` to append a digit.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 1234;
+        // Reverse the digits and print the result
+    }
+}`,
+  },
+  {
+    id: 51,
+    title: "Check Palindrome Number",
+    topic: "Loops",
+    difficulty: "Medium",
+    topics: ["Loops", "Digits"],
+    description:
+      "A ticket number `n = 1221` is considered special if it reads the same forward and backward. Print `Palindrome` if it is special, otherwise print `Not Palindrome`.",
+    note1:
+      "Reverse the digits and compare the reversed value with the original number.",
+    note2:
+      "Save the original number before the loop changes `n`.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 1221",
+        output: "Palindrome",
+        explanation:
+          "1221 reads the same from left to right and right to left.",
+      },
+    ],
+    constraints: [
+      "Do not convert the number to a string.",
+      "Print exactly `Palindrome` or `Not Palindrome`.",
+    ],
+    followUp:
+      "Can you check whether a four-digit PIN is a palindrome after removing leading zeroes?",
+    beginnerTips: [
+      "Changing `n` inside the loop destroys the original value unless you save it.",
+      "The reverse-digit pattern from the previous problem is useful here.",
+      "Compare numbers with `==` after the loop finishes.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 1221;
+        // Print Palindrome or Not Palindrome
+    }
+}`,
+  },
+  {
+    id: 52,
+    title: "Count Factors of a Number",
+    topic: "Loops",
+    difficulty: "Hard",
+    topics: ["Loops", "Modulo"],
+    description:
+      "A math app needs to know how many positive factors `n = 12` has. Count and print the number of factors.",
+    note1:
+      "Test every number from 1 through n and count the values that divide n evenly.",
+    note2:
+      "A factor leaves remainder 0 when used with modulo.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 12",
+        output: "6",
+        explanation:
+          "The factors are 1, 2, 3, 4, 6, and 12.",
+      },
+    ],
+    constraints: [
+      "Use a loop from 1 to n.",
+      "Print only the factor count.",
+    ],
+    followUp:
+      "Can you print each factor before printing the count?",
+    beginnerTips: [
+      "A counter variable usually starts at 0.",
+      "Use `n % i == 0` to detect a factor.",
+      "Increment the counter only when the condition is true.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 12;
+        // Count and print the number of factors
+    }
+}`,
+  },
+  {
+    id: 53,
+    title: "Print Star Pattern",
+    topic: "Loops",
+    difficulty: "Hard",
+    topics: ["Loops", "Nested Loops"],
+    description:
+      "A console drawing tool needs a right triangle pattern with `n = 4` rows. Print 1 star on the first row, 2 on the second, and continue up to 4 stars.",
+    note1:
+      "Use one loop for rows and another loop to print the stars in each row.",
+    note2:
+      "Use `print` for stars on the same row and `println` when a row is complete.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "n = 4",
+        output: "*\\n**\\n***\\n****",
+        explanation:
+          "Each row contains one more star than the previous row.",
+      },
+    ],
+    constraints: [
+      "Use nested loops.",
+      "Do not print spaces after the stars.",
+    ],
+    followUp:
+      "Can you print the same triangle upside down?",
+    beginnerTips: [
+      "The outer loop controls the row number.",
+      "The inner loop controls how many stars appear on that row.",
+      "Patterns become easier when you write the desired output first.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int n = 4;
+        // Print the star pattern
+    }
+}`,
+  },
+  {
+    id: 54,
+    title: "Find Power Using Loop",
+    topic: "Loops",
+    difficulty: "Hard",
+    topics: ["Loops", "Math"],
+    description:
+      "A calculator is missing its power function. Given `base = 3` and `exponent = 4`, calculate base raised to exponent using repeated multiplication and print the result.",
+    note1:
+      "Multiply the result by the base exactly exponent times.",
+    note2:
+      "Start the result at 1 so exponent 0 can work naturally later.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "base = 3, exponent = 4",
+        output: "81",
+        explanation:
+          "3 multiplied by itself 4 times is 81.",
+      },
+    ],
+    constraints: [
+      "Do not use `Math.pow`.",
+      "Assume the exponent is non-negative.",
+    ],
+    followUp:
+      "Can you handle exponent 0 and explain why the answer should be 1?",
+    beginnerTips: [
+      "Repeated multiplication is a natural loop problem.",
+      "A loop can run `exponent` times using a counter.",
+      "Keep the multiplication inside the loop and the print after it.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int base = 3;
+        int exponent = 4;
+        // Calculate power using a loop and print it
+    }
+}`,
+  },
+  {
+    id: 55,
+    title: "Find Minimum in Array",
+    topic: "Arrays",
+    difficulty: "Easy",
+    topics: ["Arrays", "Comparison"],
+    description:
+      "A weather app stores weekly morning temperatures in `temps = {12, 5, 27, 3, 19}`. Find and print the lowest temperature.",
+    note1:
+      "Visit each array element and keep track of the smallest value seen so far.",
+    note2:
+      "Start with the first element as the current minimum, then compare the rest.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "temps = {12, 5, 27, 3, 19}",
+        output: "3",
+        explanation:
+          "3 is the smallest value in the array.",
+      },
+    ],
+    constraints: [
+      "The array is non-empty.",
+      "Do not use built-in helper methods.",
+    ],
+    followUp:
+      "Can you also print the index where the minimum temperature occurs?",
+    beginnerTips: [
+      "Arrays are read with indexes like `temps[i]`.",
+      "Use a loop to avoid checking each element manually.",
+      "Update the minimum only when a smaller value is found.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] temps = {12, 5, 27, 3, 19};
+        // Find and print the lowest temperature
+    }
+}`,
+  },
+  {
+    id: 56,
+    title: "Calculate Average of Array",
+    topic: "Arrays",
+    difficulty: "Easy",
+    topics: ["Arrays", "Aggregation"],
+    description:
+      "A coach records four lap times in seconds: `times = {10, 20, 30, 40}`. Calculate the average lap time and print it rounded to one decimal place.",
+    note1:
+      "Add every array element, then divide by the number of elements.",
+    note2:
+      "Use `times.length` so the code depends on the array size, not a hardcoded count.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "times = {10, 20, 30, 40}",
+        output: "25.0",
+        explanation:
+          "The total is 100, and 100 divided by 4 is 25.0.",
+      },
+    ],
+    constraints: [
+      "The array is non-empty.",
+      "Print exactly one digit after the decimal point.",
+    ],
+    followUp:
+      "Can you calculate the average after ignoring the slowest lap?",
+    beginnerTips: [
+      "Use a loop to accumulate the total.",
+      "Cast or divide by a double to keep decimal precision.",
+      "`array.length` is the standard way to get array size.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] times = {10, 20, 30, 40};
+        // Calculate and print the average rounded to 1 decimal
+    }
+}`,
+  },
+  {
+    id: 57,
+    title: "Count Odd Numbers",
+    topic: "Arrays",
+    difficulty: "Easy",
+    topics: ["Arrays", "Conditions"],
+    description:
+      "A list of house numbers is stored as `houses = {2, 7, 9, 12, 15, 20}`. Count how many house numbers are odd and print the count.",
+    note1:
+      "Traverse the array and test each value for oddness.",
+    note2:
+      "Modulo by 2 tells you whether a number is even or odd.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "houses = {2, 7, 9, 12, 15, 20}",
+        output: "3",
+        explanation:
+          "7, 9, and 15 are odd, so the count is 3.",
+      },
+    ],
+    constraints: [
+      "Use a loop over the array.",
+      "Print only the final count.",
+    ],
+    followUp:
+      "Can you count even and odd house numbers separately?",
+    beginnerTips: [
+      "Use a counter variable for matching elements.",
+      "A for-each loop works well when indexes are not needed.",
+      "Increment the counter only for odd values.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] houses = {2, 7, 9, 12, 15, 20};
+        // Count and print odd house numbers
+    }
+}`,
+  },
+  {
+    id: 58,
+    title: "Count Positive and Negative Numbers",
+    topic: "Arrays",
+    difficulty: "Medium",
+    topics: ["Arrays", "Conditions"],
+    description:
+      "A bank statement stores daily balance changes as `changes = {-3, 5, 0, -1, 8, -6}`. Count positive changes and negative changes, then print the two counts on separate lines.",
+    note1:
+      "Use one counter for deposits or gains and another counter for losses.",
+    note2:
+      "Zero should not be counted as positive or negative.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "changes = {-3, 5, 0, -1, 8, -6}",
+        output: "2\\n3",
+        explanation:
+          "There are 2 positive values and 3 negative values.",
+      },
+    ],
+    constraints: [
+      "Use a loop over the array.",
+      "Print positive count first, then negative count.",
+    ],
+    followUp:
+      "Can you also count zero-change days?",
+    beginnerTips: [
+      "Use `value > 0` for positives.",
+      "Use `value < 0` for negatives.",
+      "Separate counters make the result easier to manage.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] changes = {-3, 5, 0, -1, 8, -6};
+        // Count positives and negatives, then print both counts
+    }
+}`,
+  },
+  {
+    id: 59,
+    title: "Copy Array Elements",
+    topic: "Arrays",
+    difficulty: "Medium",
+    topics: ["Arrays", "Copying"],
+    description:
+      "A backup tool needs to copy product codes from `source = {4, 8, 15}` into a new array. Copy the elements manually and print the copied values on one line.",
+    note1:
+      "Create a destination array with the same length and copy each element by index.",
+    note2:
+      "Assigning one array variable to another would only copy the reference, not practice element-by-element copying.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "source = {4, 8, 15}",
+        output: "4 8 15",
+        explanation:
+          "The copied array contains the same values in the same order.",
+      },
+    ],
+    constraints: [
+      "Use a new array for the copied values.",
+      "Print values with single spaces and no trailing space.",
+    ],
+    followUp:
+      "Can you copy the values into the new array in reverse order?",
+    beginnerTips: [
+      "Use `new int[source.length]` for the destination.",
+      "The same index can read from source and write to copy.",
+      "A `StringBuilder` helps build clean spaced output.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] source = {4, 8, 15};
+        // Copy source into a new array and print the copied values
+    }
+}`,
+  },
+  {
+    id: 60,
+    title: "Find Second Largest Element",
+    topic: "Arrays",
+    difficulty: "Hard",
+    topics: ["Arrays", "Comparison"],
+    description:
+      "A competition stores final scores as `scores = {10, 25, 7, 40, 32}`. Find and print the second highest score.",
+    note1:
+      "Track the largest score and the best score below it while traversing the array.",
+    note2:
+      "When a new largest value is found, the old largest may become the second largest.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "scores = {10, 25, 7, 40, 32}",
+        output: "32",
+        explanation:
+          "40 is highest, and 32 is the next highest score.",
+      },
+    ],
+    constraints: [
+      "The array has at least two distinct values.",
+      "Do not sort the array.",
+    ],
+    followUp:
+      "Can you handle duplicate highest scores correctly?",
+    beginnerTips: [
+      "This problem needs two tracking variables, not just one.",
+      "Update second largest before replacing the largest when needed.",
+      "Test your logic mentally with values in different orders.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] scores = {10, 25, 7, 40, 32};
+        // Find and print the second highest score
+    }
+}`,
+  },
+  {
+    id: 61,
+    title: "Check Element Exists",
+    topic: "Arrays",
+    difficulty: "Medium",
+    topics: ["Arrays", "Search"],
+    description:
+      "A library shelf stores book IDs in `bookIds = {6, 11, 18, 24}`. Given `target = 18`, print `Found` if the ID exists, otherwise print `Not Found`.",
+    note1:
+      "Search the array one element at a time until the target is found or the array ends.",
+    note2:
+      "A boolean flag can remember whether the target has been seen.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "bookIds = {6, 11, 18, 24}, target = 18",
+        output: "Found",
+        explanation:
+          "The value 18 appears in the array.",
+      },
+    ],
+    constraints: [
+      "Use linear search.",
+      "Print exactly `Found` or `Not Found`.",
+    ],
+    followUp:
+      "Can you print the index of the found book ID?",
+    beginnerTips: [
+      "Linear search checks values from left to right.",
+      "Use `break` when no further searching is needed.",
+      "Print after the search so the message appears once.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] bookIds = {6, 11, 18, 24};
+        int target = 18;
+        // Print Found or Not Found
+    }
+}`,
+  },
+  {
+    id: 62,
+    title: "Count Frequency of Element",
+    topic: "Arrays",
+    difficulty: "Medium",
+    topics: ["Arrays", "Search"],
+    description:
+      "A survey records chosen option numbers as `responses = {2, 5, 2, 8, 2, 9}`. Count how many people chose option `target = 2` and print the count.",
+    note1:
+      "Traverse the full array and count every value equal to the target.",
+    note2:
+      "Do not stop after the first match because the target can appear multiple times.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "responses = {2, 5, 2, 8, 2, 9}, target = 2",
+        output: "3",
+        explanation:
+          "Option 2 appears three times in the responses.",
+      },
+    ],
+    constraints: [
+      "Use a loop and a counter.",
+      "Print only the frequency count.",
+    ],
+    followUp:
+      "Can you count the frequency of every option from 1 to 5?",
+    beginnerTips: [
+      "Frequency means number of occurrences.",
+      "Compare each element with the target using `==`.",
+      "Increment the counter for every match.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] responses = {2, 5, 2, 8, 2, 9};
+        int target = 2;
+        // Count and print the target frequency
+    }
+}`,
+  },
+  {
+    id: 63,
+    title: "Merge Two Arrays",
+    topic: "Arrays",
+    difficulty: "Hard",
+    topics: ["Arrays", "Copying"],
+    description:
+      "Two short attendance lists are stored as `morning = {1, 3, 5}` and `evening = {2, 4}`. Merge them into one new array and print all IDs in order.",
+    note1:
+      "Create a merged array large enough to hold both source arrays.",
+    note2:
+      "Copy the first array, then continue copying the second array from the next open position.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "morning = {1, 3, 5}, evening = {2, 4}",
+        output: "1 3 5 2 4",
+        explanation:
+          "The merged array keeps all morning IDs first, followed by evening IDs.",
+      },
+    ],
+    constraints: [
+      "Do not use collection classes.",
+      "Print values with single spaces and no trailing space.",
+    ],
+    followUp:
+      "Can you merge two sorted arrays so the final array is also sorted?",
+    beginnerTips: [
+      "The merged length is `morning.length + evening.length`.",
+      "A separate index variable can track where to write next.",
+      "Array merging is mostly careful index management.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] morning = {1, 3, 5};
+        int[] evening = {2, 4};
+        // Merge both arrays and print the result
+    }
+}`,
+  },
+  {
+    id: 64,
+    title: "Sort Array in Ascending Order",
+    topic: "Arrays",
+    difficulty: "Hard",
+    topics: ["Arrays", "Sorting"],
+    description:
+      "A results board stores unsorted race positions as `positions = {5, 1, 4, 2, 3}`. Sort the array in ascending order using loops and print the sorted positions.",
+    note1:
+      "Use a beginner-friendly sorting method such as bubble sort or selection sort.",
+    note2:
+      "Whenever two values are out of order, swap them using a temporary variable.",
+    examples: [
+      {
+        label: "Example 1",
+        input: "positions = {5, 1, 4, 2, 3}",
+        output: "1 2 3 4 5",
+        explanation:
+          "After sorting, the positions are printed from smallest to largest.",
+      },
+    ],
+    constraints: [
+      "Do not use `Arrays.sort`.",
+      "Print values with single spaces and no trailing space.",
+    ],
+    followUp:
+      "Can you sort the same array in descending order?",
+    beginnerTips: [
+      "Sorting often needs nested loops for beginner algorithms.",
+      "Use a temporary variable when swapping two array elements.",
+      "Print only after all swaps are complete.",
+    ],
+    starterCode: `public class Main {
+    public static void main(String[] args) {
+        int[] positions = {5, 1, 4, 2, 3};
+        // Sort in ascending order and print the sorted values
+    }
+}`,
+  },
 ];
 
 // ─── expectedOutput normalization ──────────────────────────────────
