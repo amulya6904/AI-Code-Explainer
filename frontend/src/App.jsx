@@ -11,6 +11,7 @@ import "./styles/theme.css";
 import "./styles/globals.css";
 import "./styles/layout.css";
 import "./styles/video-gen.css";
+import "./styles/video-player.css";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");

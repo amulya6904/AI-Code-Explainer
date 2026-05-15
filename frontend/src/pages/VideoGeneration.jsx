@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import axios from "axios";
 import CodeEditor from "../components/editor/CodeEditor";
+import VideoPlayer from "../components/VideoPlayer";
 import API from "../api/client";
 
 // Render API routed through Vite proxy to avoid CORS issues
@@ -353,14 +354,7 @@ function VideoGeneration() {
           <div className="card video-gen-player-card">
             {videoUrl ? (
               <div className="video-gen-player-wrapper">
-                <video
-                  className="video-gen-video"
-                  src={videoUrl}
-                  controls
-                  autoPlay
-                >
-                  Your browser does not support the video tag.
-                </video>
+                <VideoPlayer src={videoUrl} />
               </div>
             ) : isGenerating ? (
               <div className="video-gen-progress-section">
