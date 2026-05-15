@@ -53,6 +53,14 @@ const BookIcon = () => (
   </Icon>
 );
 
+const VideoIcon = () => (
+  <Icon>
+    <rect x="2" y="4" width="20" height="14" rx="2" />
+    <polygon points="10 9 15 12 10 15" fill="currentColor" stroke="none" />
+    <line x1="6" y1="21" x2="18" y2="21" />
+  </Icon>
+);
+
 const SparkleIcon = () => (
   <Icon>
     <path d="M12 3l1.8 4.8L18 9.5l-4.2 1.7L12 16l-1.8-4.8L6 9.5l4.2-1.7L12 3z" />
@@ -66,6 +74,7 @@ const menuItems = [
   { label: "Progress", icon: ProgressIcon },
   { label: "Simulator", icon: SimulatorIcon },
   { label: "Study", icon: BookIcon },
+  { label: "Video Gen", icon: VideoIcon },
 ];
 
 function Sidebar({ activePage, setActivePage, onToggle }) {

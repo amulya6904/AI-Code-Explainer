@@ -1,0 +1,332 @@
+/* ============================================================
+   Codexa AI — Video Generation Page Styles
+   ============================================================ */
+
+/* ─── Layout ────────────────────────────────────────────────── */
+.video-gen-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+.video-gen-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.video-gen-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-width: 0;
+  position: sticky;
+  top: var(--space-6);
+}
+
+/* ─── Toolbar (filename + run) ──────────────────────────────── */
+.video-gen-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+}
+
+.video-gen-file-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+}
+
+.video-gen-file-icon {
+  font-size: 14px;
+}
+
+.video-gen-filename-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  width: 120px;
+}
+
+.video-gen-filename-input:focus {
+  color: var(--accent-cyan);
+}
+
+.video-gen-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* ─── Editor card ───────────────────────────────────────────── */
+.video-gen-editor {
+  padding: 0;
+  overflow: hidden;
+}
+
+/* ─── Output panel ──────────────────────────────────────────── */
+.video-gen-output {
+  padding: var(--space-4) var(--space-5);
+}
+
+.video-gen-output-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.video-gen-output-content {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  max-height: 180px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+.video-gen-status {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.video-gen-status--success {
+  color: var(--success);
+}
+
+/* ─── Controls (quality + generate) ─────────────────────────── */
+.video-gen-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.video-gen-quality-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.video-gen-quality-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+
+.video-gen-quality-select {
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  transition: border-color var(--dur-base) var(--ease-out);
+}
+
+.video-gen-quality-select:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.video-gen-quality-select:focus {
+  outline: none;
+  border-color: var(--accent-cyan);
+  box-shadow: 0 0 0 2px var(--accent-cyan-soft);
+}
+
+.video-gen-quality-select option {
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+.video-gen-generate-btn {
+  width: 100%;
+  justify-content: center;
+  padding: var(--space-4) var(--space-5);
+  font-size: var(--fs-md);
+}
+
+.video-gen-hint {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  text-align: center;
+  margin-top: var(--space-1);
+}
+
+/* ─── Video player card ─────────────────────────────────────── */
+.video-gen-player-card {
+  min-height: 360px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+}
+
+.video-gen-player-wrapper {
+  width: 100%;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-default);
+}
+
+.video-gen-video {
+  width: 100%;
+  display: block;
+  border-radius: var(--radius-md);
+}
+
+/* ─── Placeholder state ─────────────────────────────────────── */
+.video-gen-placeholder {
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.video-gen-placeholder-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  opacity: 0.6;
+}
+
+.video-gen-placeholder h3 {
+  font-size: var(--fs-xl);
+  margin-bottom: var(--space-3);
+  color: var(--text-secondary);
+}
+
+.video-gen-placeholder p {
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  max-width: 280px;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+
+/* ─── Progress state ────────────────────────────────────────── */
+.video-gen-progress-section {
+  text-align: center;
+  padding: var(--space-6);
+  width: 100%;
+}
+
+.video-gen-progress-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+  animation: pulse 2s var(--ease-in-out) infinite;
+}
+
+.video-gen-progress-section h3 {
+  font-size: var(--fs-lg);
+  margin-bottom: var(--space-3);
+}
+
+.video-gen-stage {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+  margin-bottom: var(--space-5);
+}
+
+.video-gen-stage span {
+  color: var(--accent-cyan);
+}
+
+.video-gen-progress-bar {
+  max-width: 320px;
+  margin: 0 auto var(--space-3);
+  height: 10px;
+}
+
+.video-gen-progress-pct {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  font-weight: var(--fw-semibold);
+}
+
+/* ─── Error state ───────────────────────────────────────────── */
+.video-gen-error-section {
+  text-align: center;
+  padding: var(--space-6);
+}
+
+.video-gen-error-icon {
+  font-size: 48px;
+  margin-bottom: var(--space-4);
+}
+
+.video-gen-error-section h3 {
+  font-size: var(--fs-lg);
+  color: var(--danger);
+  margin-bottom: var(--space-3);
+}
+
+.video-gen-error-msg {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-tertiary);
+  margin-bottom: var(--space-5);
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+  line-height: 1.6;
+}
+
+/* ─── Spinner ───────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border-strong);
+  border-top-color: var(--accent-cyan);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+/* ─── Responsive ────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  .video-gen-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .video-gen-right {
+    position: static;
+  }
+}
+
+@media (max-width: 768px) {
+  .video-gen-toolbar {
+    flex-direction: column;
+    gap: var(--space-3);
+    align-items: stretch;
+  }
+
+  .video-gen-quality-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -5,10 +5,12 @@ import Practice from "./pages/Practice";
 import Progress from "./pages/Progress";
 import Simulation from "./pages/Simulation";
 import Study from "./pages/Study";
+import VideoGeneration from "./pages/VideoGeneration";
 import { problems } from "./data/problems";
 import "./styles/theme.css";
 import "./styles/globals.css";
 import "./styles/layout.css";
+import "./styles/video-gen.css";
 
 function App() {
   const [activePage, setActivePage] = useState("Dashboard");
@@ -62,6 +64,7 @@ function App() {
             setSelectedProblemId={setSelectedProblemId}
           />
         )}
+        {activePage === "Video Gen" && <VideoGeneration />}
       </main>
     </div>
   );
