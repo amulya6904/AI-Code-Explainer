@@ -272,6 +272,7 @@ def submit_code():
     problem_id = body.get("problem_id")
     problem_title = body.get("problem_title")
     problem_topic = body.get("problem_topic")  # canonical catalog topic
+    problem_difficulty = body.get("problem_difficulty")  # Easy / Medium / Hard
     expected_output = body.get("expected_output")
     question_context = body.get("question_context") if isinstance(body.get("question_context"), dict) else None
 
@@ -448,6 +449,7 @@ def submit_code():
             problem_id=problem_id,
             problem_title=problem_title,
             problem_topic=problem_topic,
+            problem_difficulty=problem_difficulty,
             wrong_output=output_mismatch,
         )
 

@@ -22,6 +22,7 @@ from database import (
     get_submit_attempts_for_user,
     get_topic_performance_for_user,
 )
+from encouragement_engine import generate_all_encouragements
 
 # ---------------------------------------------------------------------------
 # Classification thresholds (single place to tune)
@@ -420,32 +421,12 @@ def get_learning_summary(user_id: str) -> dict:
     recent_submissions = get_recent_submissions_for_user(user_id, limit=8)
 
     # ------------------------------------------------------------------
-    # Recommendations
+    # Encouragements (hint-usage based motivational messages)
     # ------------------------------------------------------------------
-    # The backend doesn't own the problem catalog, so it can only point
-    # at *topics* that need attention. The frontend joins these topic
-    # hints against problems.js to pick a concrete problem to surface
-    # in the "Recommended Next" card on the Progress page.
-    #
-    # Priority order:
-    #   1. Weak topics        — student is stuck, biggest payoff
-    #   2. Improving topics   — ride the momentum
-    #   3. Neutral (general)  — fallback for brand-new users
-    recommendation_topics = list(weak) + list(improving)
-    if not recommendation_topics:
-        recommendation_topics = ["general"]
-
-    recommendations = [
-        {
-            "topic":  t,
-            "reason": (
-                f"Strengthen {t} fundamentals" if t in weak
-                else f"Keep the momentum on {t}" if t in improving
-                else "Warm up with an easy problem"
-            ),
-        }
-        for t in recommendation_topics[:3]
-    ]
+    # Replaces the old topic-based recommendations. Each entry contains
+    # a topic, status (improving/weak/strong), and a personalised message
+    # derived from the user's hint-usage patterns weighted by difficulty.
+    encouragements = generate_all_encouragements(user_id)
 
     # ------------------------------------------------------------------
     # Error breakdown
@@ -485,7 +466,7 @@ def get_learning_summary(user_id: str) -> dict:
         "topic_performance":               topic_performance,
         "streak":                          streak,
         "recent_submissions":              recent_submissions,
-        "recommendations":                 recommendations,
+        "encouragements":                  encouragements,
         "error_breakdown":                 error_breakdown,
         "mastered_problem_ids_by_topic":   mastered_problem_ids_by_topic,
         "insight":                         insight,

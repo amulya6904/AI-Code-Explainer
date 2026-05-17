@@ -213,6 +213,7 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         problem_id: problem.id,
         problem_title: problem.title,
         problem_topic: problem.topic,
+        problem_difficulty: problem.difficulty,
         hints_used: hintsUsed,
       });
 
@@ -265,6 +266,7 @@ function Practice({ attempts, setAttempts, selectedProblemId }) {
         problem_id: problem.id,
         problem_title: problem.title,
         problem_topic: problem.topic,
+        problem_difficulty: problem.difficulty,
         hints_used: hintsUsed,
         expected_output: problem.expectedOutput,
         question_context: {

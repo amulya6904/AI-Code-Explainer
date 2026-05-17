@@ -513,6 +513,56 @@ def get_topic_stat(user_id: str, topic: str) -> dict:
     return topic_stats_col().find_one({"user_id": user_id, "topic": topic})
 
 
+def get_submissions_by_topic(user_id: str) -> dict:
+    """
+    Return submit-type submissions grouped by problem_topic, with only
+    the fields needed for the encouragement engine: hints_used,
+    problem_difficulty, resolved, and timestamp.
+
+    Returns a dict of topic -> list of submission dicts, sorted by
+    timestamp ascending (oldest first) within each topic.
+
+    Example:
+      {
+        "Loops": [
+          {"hints_used": 2, "difficulty": "Easy", "resolved": True, "timestamp": ...},
+          {"hints_used": 0, "difficulty": "Medium", "resolved": True, "timestamp": ...},
+        ],
+        "Arrays": [ ... ]
+      }
+    """
+    cursor = submissions_col().find(
+        {
+            "user_id": user_id,
+            "$or": [
+                {"submission_type": "submit"},
+                {"submission_type": {"$exists": False}},
+            ],
+            "problem_topic": {"$nin": [None, ""]},
+        },
+        {
+            "problem_topic": 1,
+            "problem_difficulty": 1,
+            "hints_used": 1,
+            "resolved": 1,
+            "timestamp": 1,
+        },
+    ).sort("timestamp", ASCENDING)
+
+    grouped = {}
+    for doc in cursor:
+        topic = doc.get("problem_topic")
+        if not topic:
+            continue
+        grouped.setdefault(topic, []).append({
+            "hints_used":  doc.get("hints_used", 0),
+            "difficulty":  doc.get("problem_difficulty") or "Easy",
+            "resolved":    bool(doc.get("resolved")),
+            "timestamp":   doc.get("timestamp"),
+        })
+    return grouped
+
+
 def get_all_topic_stats(user_id: str) -> list:
     """Return all topic_stats documents for a user."""
     return list(topic_stats_col().find({"user_id": user_id}))

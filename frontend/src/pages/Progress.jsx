@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useLearningSummary } from "../hooks/useLearningSummary";
 import { deriveInsight } from "../utils/insight";
-import { problems, problemsByTopic, TOPIC_ORDER } from "../data/problems";
+import { problemsByTopic, TOPIC_ORDER } from "../data/problems";
 
 // ─── Helpers ─────────────────────────────────────────────────
 
@@ -44,39 +44,17 @@ function buildTopicPerformance(summary) {
   );
 }
 
-// Backend recommendations are topic-only (e.g. {topic: "Loops", reason: "..."}).
-// The Progress UI expects a concrete problem to click into, so we join
-// each recommended topic against the catalog and pick the first
-// unsolved-looking problem (falling back to any problem in the topic).
-function enrichRecommendations(rawRecs, recentSubmissions) {
-  const solvedIds = new Set(
-    (recentSubmissions ?? [])
-      .filter((s) => s.status === "Success")
-      .map((s) => s.problem_id)
-  );
+// Status badge styling helper for encouragement cards
+function statusBadgeClass(status) {
+  if (status === "strong") return "badge--easy";
+  if (status === "improving") return "badge--medium";
+  return "badge--hard";
+}
 
-  const enriched = [];
-  const used = new Set();
-
-  for (const rec of rawRecs ?? []) {
-    const topicProblems = problems.filter((p) => p.topic === rec.topic);
-    if (topicProblems.length === 0) continue;
-
-    const pick =
-      topicProblems.find((p) => !solvedIds.has(p.id) && !used.has(p.id)) ??
-      topicProblems.find((p) => !used.has(p.id)) ??
-      topicProblems[0];
-
-    used.add(pick.id);
-    enriched.push({
-      problem_id: pick.id,
-      title:      pick.title,
-      topic:      pick.topic,
-      difficulty: pick.difficulty,
-      reason:     rec.reason,
-    });
-  }
-  return enriched;
+function statusLabel(status) {
+  if (status === "strong") return "Strong";
+  if (status === "improving") return "Improving";
+  return "Needs Work";
 }
 
 function pct(value) {
@@ -122,15 +100,8 @@ function Progress({ setActivePage, setSelectedProblemId }) {
     [summary]
   );
 
-  // Problem-level recommendations joined from the backend topic hints.
-  const enrichedRecommendations = useMemo(
-    () =>
-      enrichRecommendations(
-        summary?.recommendations,
-        summary?.recent_submissions
-      ),
-    [summary]
-  );
+  // Encouragement messages from the backend (hint-usage based)
+  const encouragements = summary?.encouragements ?? [];
 
   const maxErrorCount = useMemo(() => {
     const breakdown = summary?.error_breakdown ?? [];
@@ -318,36 +289,35 @@ function Progress({ setActivePage, setSelectedProblemId }) {
         {/* RIGHT: recommendations + activity */}
         <div className="progress-section-stack">
           <div className="card">
-            <div className="progress-section-title">Recommended Next</div>
+            <div className="progress-section-title">Encouragement</div>
             <div className="recommendations-list">
-              {enrichedRecommendations.length === 0 ? (
+              {encouragements.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-state__icon">◇</div>
                   <div className="empty-state__text">
-                    Submit a few problems to unlock personalized
-                    recommendations.
+                    Submit a few problems to unlock personalised encouragement
+                    based on your hint usage.
                   </div>
                 </div>
               ) : (
-                enrichedRecommendations.map((rec, idx) => (
-                  <button
-                    key={rec.problem_id}
+                encouragements.map((enc, idx) => (
+                  <div
+                    key={enc.topic}
                     className="recommendation-item"
-                    onClick={() => openProblem(rec.problem_id)}
                   >
                     <span className="recommendation-number">
                       {String(idx + 1).padStart(2, "0")}
                     </span>
                     <div className="recommendation-body">
-                      <div className="recommendation-title">{rec.title}</div>
-                      <div className="recommendation-reason">{rec.reason}</div>
+                      <div className="recommendation-title">{enc.topic}</div>
+                      <div className="recommendation-reason">{enc.message}</div>
                     </div>
                     <span
-                      className={`badge badge--${rec.difficulty.toLowerCase()}`}
+                      className={`badge ${statusBadgeClass(enc.status)}`}
                     >
-                      {rec.difficulty}
+                      {statusLabel(enc.status)}
                     </span>
-                  </button>
+                  </div>
                 ))
               )}
             </div>

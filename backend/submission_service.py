@@ -116,6 +116,7 @@ def save_submission(
     problem_id: int = None,
     problem_title: str = None,
     problem_topic: str = None,
+    problem_difficulty: str = None,
     wrong_output: bool = False,
 ) -> str:
     """
@@ -181,6 +182,7 @@ def save_submission(
         "problem_id":      problem_id,
         "problem_title":   problem_title,
         "problem_topic":   problem_topic,
+        "problem_difficulty": problem_difficulty,
         "timestamp":       now,
     }
     submission_id = insert_submission(doc)
