@@ -74,6 +74,79 @@ function expressionFromSnippet(snippet, lineNumber) {
     return { type: "Identifier", name: text };
   }
 
+  // Parse binary expressions: "a * 2", "n / 2", "i + 1", "x - 1", etc.
+  const binMatch = text.match(
+    /^([A-Za-z_][A-Za-z0-9_$]*)\s*([+\-*/%])\s*(\d+|[A-Za-z_][A-Za-z0-9_$]*)$/
+  );
+  if (binMatch) {
+    const leftName = binMatch[1];
+    const op = binMatch[2];
+    const rightRaw = binMatch[3];
+    const rightIsNum = /^\d+$/.test(rightRaw);
+    return {
+      type: "BinaryExpression",
+      operator: op,
+      left: { type: "Identifier", name: leftName },
+      right: rightIsNum
+        ? { type: "Literal", value: Number(rightRaw) }
+        : { type: "Identifier", name: rightRaw },
+    };
+  }
+
+  // Parse reversed binary: "2 * n", "1 + i"
+  const binMatchReversed = text.match(
+    /^(\d+)\s*([+\-*/%])\s*([A-Za-z_][A-Za-z0-9_$]*)$/
+  );
+  if (binMatchReversed) {
+    const leftVal = Number(binMatchReversed[1]);
+    const op = binMatchReversed[2];
+    const rightName = binMatchReversed[3];
+    return {
+      type: "BinaryExpression",
+      operator: op,
+      left: { type: "Literal", value: leftVal },
+      right: { type: "Identifier", name: rightName },
+    };
+  }
+
+  // Parse parenthesized binary divided/multiplied: "(a + b) / 2", "(x + y) * 3"
+  const parenBinMatch = text.match(
+    /^\(([^)]+)\)\s*([+\-*/%])\s*(\d+|[A-Za-z_][A-Za-z0-9_$]*)$/
+  );
+  if (parenBinMatch) {
+    const innerExpr = parenBinMatch[1].trim();
+    const op = parenBinMatch[2];
+    const rightRaw = parenBinMatch[3];
+    const rightIsNum = /^\d+$/.test(rightRaw);
+    return {
+      type: "BinaryExpression",
+      operator: op,
+      left: expressionFromSnippet(innerExpr, lineNumber) || { type: "Identifier", name: innerExpr },
+      right: rightIsNum
+        ? { type: "Literal", value: Number(rightRaw) }
+        : { type: "Identifier", name: rightRaw },
+    };
+  }
+
+  // Parse comparison expressions: "i < n", "low <= high"
+  const cmpMatch = text.match(
+    /^([A-Za-z_][A-Za-z0-9_$]*)\s*(<=?|>=?|==|!=)\s*(\d+|[A-Za-z_][A-Za-z0-9_$.]*(?:\.\w+)*)$/
+  );
+  if (cmpMatch) {
+    const leftName = cmpMatch[1];
+    const op = cmpMatch[2];
+    const rightRaw = cmpMatch[3];
+    const rightIsNum = /^\d+$/.test(rightRaw);
+    return {
+      type: "BinaryExpression",
+      operator: op,
+      left: { type: "Identifier", name: leftName },
+      right: rightIsNum
+        ? { type: "Literal", value: Number(rightRaw) }
+        : { type: "Identifier", name: rightRaw },
+    };
+  }
+
   return null;
 }
 
@@ -134,30 +207,99 @@ function parseForStatement(node, language) {
     .reverse()
     .find((child) => ["block", "expression_statement", "if_statement", "for_statement", "while_statement", "return_statement"].includes(child.type));
 
-  const conditionNode = children.find((child) =>
-    ["binary_expression", "comparison_operator", "parenthesized_expression"].includes(child.type),
+  // For while loops, the condition is typically inside a parenthesized_expression
+  // For for loops, it can be a binary_expression directly
+  let conditionNode = children.find((child) =>
+    ["binary_expression", "comparison_operator"].includes(child.type),
   );
+
+  // If not found directly, look inside parenthesized_expression
+  if (!conditionNode) {
+    const parenNode = children.find((child) => child.type === "parenthesized_expression");
+    if (parenNode) {
+      const parenChildren = Array.isArray(parenNode.children) ? parenNode.children : [];
+      conditionNode = parenChildren.find((child) =>
+        ["binary_expression", "comparison_operator"].includes(child.type),
+      );
+      // If still not found, use the parenthesized_expression snippet itself
+      if (!conditionNode) {
+        conditionNode = parenNode;
+      }
+    }
+  }
+
+  // Extract the condition snippet, stripping outer parentheses if present
+  let conditionSnippet = conditionNode?.snippet || "";
+  if (conditionSnippet.startsWith("(") && conditionSnippet.endsWith(")")) {
+    conditionSnippet = conditionSnippet.slice(1, -1).trim();
+  }
 
   const snippet = String(node.snippet || "");
   let update = null;
-  const updateVarMatch = snippet.match(/;\s*([A-Za-z_][A-Za-z0-9_$]*)\s*(\+\+|--)/);
-  if (updateVarMatch) {
-    update = {
-      type: "UpdateExpression",
-      operator: updateVarMatch[2],
-      name: updateVarMatch[1],
-      lineNumber: node.line || null,
-    };
-  } else if (snippet.includes("++")) {
-    update = { type: "UpdateExpression", operator: "++", name: "loopVar", lineNumber: node.line || null };
-  } else if (snippet.includes("--")) {
-    update = { type: "UpdateExpression", operator: "--", name: "loopVar", lineNumber: node.line || null };
+
+  // Only extract update expressions for for-loops (not while loops).
+  // While loops have their iteration logic in the body, which inferLoopFactor reads.
+  const isWhile = node.type === "while_statement";
+
+  if (!isWhile) {
+    const updateVarMatch = snippet.match(/;\s*([A-Za-z_][A-Za-z0-9_$]*)\s*(\+\+|--)/);
+    if (updateVarMatch) {
+      update = {
+        type: "UpdateExpression",
+        operator: updateVarMatch[2],
+        name: updateVarMatch[1],
+        lineNumber: node.line || null,
+      };
+    } else {
+      // Detect compound assignment updates: j *= 2, j /= 2
+      const compoundMatch = snippet.match(/;\s*([A-Za-z_][A-Za-z0-9_$]*)\s*(\*=|\/=)\s*(\d+)/);
+      if (compoundMatch) {
+        update = {
+          type: "Assignment",
+          operator: compoundMatch[2],
+          name: compoundMatch[1],
+          lineNumber: node.line || null,
+          value: {
+            type: "BinaryExpression",
+            operator: compoundMatch[2] === "*=" ? "*" : "/",
+            left: { type: "Identifier", name: compoundMatch[1] },
+            right: { type: "Literal", value: Number(compoundMatch[3]) },
+          },
+        };
+      } else {
+        // Detect assignment updates: j = j * 2, j = j / 2
+        const assignUpdateMatch = snippet.match(
+          /;\s*([A-Za-z_][A-Za-z0-9_$]*)\s*=\s*([A-Za-z_][A-Za-z0-9_$]*)\s*([+\-*/])\s*(\d+)/
+        );
+        if (assignUpdateMatch) {
+          const lhs = assignUpdateMatch[1];
+          const rhsVar = assignUpdateMatch[2];
+          const op = assignUpdateMatch[3];
+          const rhsNum = Number(assignUpdateMatch[4]);
+          update = {
+            type: "Assignment",
+            name: lhs,
+            lineNumber: node.line || null,
+            value: {
+              type: "BinaryExpression",
+              operator: op,
+              left: { type: "Identifier", name: rhsVar },
+              right: { type: "Literal", value: rhsNum },
+            },
+          };
+        } else if (snippet.includes("++")) {
+          update = { type: "UpdateExpression", operator: "++", name: "loopVar", lineNumber: node.line || null };
+        } else if (snippet.includes("--")) {
+          update = { type: "UpdateExpression", operator: "--", name: "loopVar", lineNumber: node.line || null };
+        }
+      }
+    }
   }
 
   return {
     type: node.type === "while_statement" ? "WhileStatement" : "ForStatement",
     lineNumber: node.line || null,
-    test: expressionFromSnippet(conditionNode?.snippet || "", node.line || null),
+    test: expressionFromSnippet(conditionSnippet, node.line || null),
     update,
     body: parseBodyNode(bodyNode, language),
   };
@@ -223,11 +365,20 @@ function parseAssignmentFromSnippet(snippet, lineNumber) {
     };
   }
 
+  // Compound assignments: +=, -=, *=, /=
+  // Expand "x *= 2" into Assignment with BinaryExpression { x * 2 }
+  const baseOp = operator.replace("=", "");
   return {
     type: "Assignment",
     name,
+    operator,
     lineNumber,
-    value: expressionFromSnippet(rhs, lineNumber),
+    value: {
+      type: "BinaryExpression",
+      operator: baseOp,
+      left: { type: "Identifier", name },
+      right: expressionFromSnippet(rhs, lineNumber) || { type: "Literal", value: Number(rhs) || 0 },
+    },
   };
 }
 

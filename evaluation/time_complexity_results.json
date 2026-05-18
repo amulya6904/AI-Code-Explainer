@@ -1,15 +1,15 @@
 {
-  "evaluation_date": "2026-05-18T15:21:14.765157",
+  "evaluation_date": "2026-05-18T15:51:06.911691",
   "total_samples": 30,
-  "overall_accuracy": 0.7,
-  "correct_count": 21,
+  "overall_accuracy": 1.0,
+  "correct_count": 30,
   "category_results": {
     "O(1)": 1.0,
-    "O(n)": 0.8889,
+    "O(n)": 1.0,
     "O(n^2)": 1.0,
     "O(n^3)": 1.0,
-    "O(log n)": 0.0,
-    "O(n log n)": 0.0
+    "O(log n)": 1.0,
+    "O(n log n)": 1.0
   },
   "results": [
     {
@@ -135,43 +135,43 @@
       "id": 18,
       "algorithm": "Binary search",
       "expected": "O(log n)",
-      "computed": "O(n)",
-      "correct": false
+      "computed": "O(log n)",
+      "correct": true
     },
     {
       "id": 19,
       "algorithm": "Power of 2 check (divide by 2)",
       "expected": "O(log n)",
-      "computed": "O(n)",
-      "correct": false
+      "computed": "O(log n)",
+      "correct": true
     },
     {
       "id": 20,
       "algorithm": "Multiply by 2 until threshold",
       "expected": "O(log n)",
-      "computed": "O(n)",
-      "correct": false
+      "computed": "O(log n)",
+      "correct": true
     },
     {
       "id": 21,
       "algorithm": "Loop with inner halving",
       "expected": "O(n log n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n * log n)",
+      "correct": true
     },
     {
       "id": 22,
       "algorithm": "Outer linear inner logarithmic (multiply)",
       "expected": "O(n log n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n * log n)",
+      "correct": true
     },
     {
       "id": 23,
       "algorithm": "Simulated merge sort pattern",
       "expected": "O(n log n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n * log n)",
+      "correct": true
     },
     {
       "id": 24,
@@ -198,15 +198,15 @@
       "id": 27,
       "algorithm": "Nested loop with inner loop constant (O(n * 5) = O(n))",
       "expected": "O(n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n)",
+      "correct": true
     },
     {
       "id": 28,
       "algorithm": "For loop with logarithmic for loop inside",
       "expected": "O(n log n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n * log n)",
+      "correct": true
     },
     {
       "id": 29,
@@ -219,8 +219,8 @@
       "id": 30,
       "algorithm": "Nested for with inner doubling (O(n * log n))",
       "expected": "O(n log n)",
-      "computed": "O(n^2)",
-      "correct": false
+      "computed": "O(n * log n)",
+      "correct": true
     }
   ]
 }

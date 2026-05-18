@@ -97,28 +97,84 @@ function inferLoopFactor(loopNode) {
     const controlVar = loopNode?.test?.left?.type === "Identifier" ? loopNode.test.left.name : null;
 
     if (controlVar) {
+      // Check for binary-search pattern: body contains "mid = (low + high) / 2"
+      // or any variable assigned as division by 2 of a range
+      let hasMidpointCalc = false;
+      let hasMultiplicativeUpdate = false;
+
       for (const statement of loopNode.body || []) {
-        if (statement?.type !== "Assignment" || statement?.name !== controlVar) continue;
+        // Handle Assignment nodes (e.g., n = n / 2)
+        if (statement?.type === "Assignment") {
+          const value = statement?.value;
+          if (value?.type === "BinaryExpression") {
+            const leftId = value.left?.type === "Identifier" ? value.left.name : null;
+            const rightConstant = value.right?.type === "Literal" ? Number(value.right.value) : NaN;
+            const op = value.operator;
 
-        const value = statement?.value;
-        if (value?.type !== "BinaryExpression") continue;
+            // Direct control variable update: n = n / 2, i = i * 2
+            if (statement.name === controlVar) {
+              const multiplicative =
+                (op === "*" || op === "/" || op === "//") &&
+                leftId === controlVar &&
+                Number.isFinite(rightConstant) &&
+                rightConstant > 1;
 
-        const leftId = value.left?.type === "Identifier" ? value.left.name : null;
-        const rightConstant = value.right?.type === "Literal" ? Number(value.right.value) : NaN;
-        const op = value.operator;
+              if (multiplicative) {
+                hasMultiplicativeUpdate = true;
+                break;
+              }
 
-        const multiplicative =
-          (op === "*" || op === "/" || op === "//") &&
-          leftId === controlVar &&
-          Number.isFinite(rightConstant) &&
-          rightConstant > 1;
+              if (op === "+" || op === "-") {
+                // controlVar = controlVar + 1 is linear
+                return { term: createBaseTerm(1, 0, 1), iterations: "n", growth: "linear" };
+              }
+            }
 
-        if (multiplicative) {
-          return { term: createBaseTerm(0, 1, 1), iterations: "log n", growth: "logarithmic" };
+            // Midpoint calculation pattern: mid = (something) / 2
+            if (op === "/" && Number.isFinite(rightConstant) && rightConstant === 2) {
+              hasMidpointCalc = true;
+            }
+          }
         }
 
-        if (op === "+" || op === "-") {
-          return { term: createBaseTerm(1, 0, 1), iterations: "n", growth: "linear" };
+        // Handle VariableDeclaration nodes (e.g., int mid = (low + high) / 2)
+        if (statement?.type === "VariableDeclaration") {
+          const value = statement?.value;
+          if (value?.type === "BinaryExpression") {
+            const op = value.operator;
+            const rightConstant = value.right?.type === "Literal" ? Number(value.right.value) : NaN;
+            if (op === "/" && Number.isFinite(rightConstant) && rightConstant === 2) {
+              hasMidpointCalc = true;
+            }
+          }
+        }
+      }
+
+      if (hasMultiplicativeUpdate) {
+        return { term: createBaseTerm(0, 1, 1), iterations: "log n", growth: "logarithmic" };
+      }
+
+      // Binary search heuristic: if body has a midpoint division by 2
+      // and the loop test involves two boundary variables
+      if (hasMidpointCalc) {
+        return { term: createBaseTerm(0, 1, 1), iterations: "log n", growth: "logarithmic" };
+      }
+    }
+  }
+
+  // Detect constant-bound loops: test condition has a literal upper bound
+  // e.g., j < 5, i < 10 — these are O(1) not O(n)
+  const test = loopNode?.test;
+  if (test?.type === "BinaryExpression") {
+    const rightIsLiteral = test.right?.type === "Literal" && Number.isFinite(Number(test.right.value));
+    const leftIsLiteral = test.left?.type === "Literal" && Number.isFinite(Number(test.left.value));
+    if (rightIsLiteral && !leftIsLiteral) {
+      // Loop bound is a constant like "j < 5" — O(1)
+      const bound = Number(test.right.value);
+      if (bound > 0 && bound <= 100) {
+        // Only treat as constant if the update is a simple increment/decrement
+        if (update?.type === "UpdateExpression") {
+          return { term: createBaseTerm(0, 0, bound), iterations: String(bound), growth: "constant" };
         }
       }
     }
