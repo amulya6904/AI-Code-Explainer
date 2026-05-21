@@ -24,29 +24,44 @@ const QUALITY_OPTIONS = [
 ];
 
 // Extract the main class name from Java source code.
-// Tries "public class Foo" first, then falls back to any top-level "class Foo".
+// Priority: class containing "public static void main", then any "public class", then first class.
 function extractClassName(source) {
-  const publicMatch = source.match(/public\s+class\s+(\w+)/);
-  if (publicMatch) return publicMatch[1];
-  // Match "class Foo" that isn't inside a string or comment (simple heuristic)
-  const classMatch = source.match(/(?:^|\n)\s*(?:abstract\s+)?class\s+(\w+)/);
-  return classMatch ? classMatch[1] : null;
+  // Find the class that contains the main method
+  // Look for class declarations and check if main() is inside them
+  const classBlocks = [...source.matchAll(/(?:public\s+)?class\s+(\w+)\s*\{/g)];
+  if (classBlocks.length > 0) {
+    // Check each class to see if it contains the main method
+    for (let i = 0; i < classBlocks.length; i++) {
+      const startIdx = classBlocks[i].index;
+      const nextClassIdx = i + 1 < classBlocks.length ? classBlocks[i + 1].index : source.length;
+      const classBody = source.slice(startIdx, nextClassIdx);
+      if (/public\s+static\s+void\s+main\s*\(\s*String/.test(classBody)) {
+        return classBlocks[i][1];
+      }
+    }
+    // No class has main — fall back to the public class
+    const publicMatch = source.match(/public\s+class\s+(\w+)/);
+    if (publicMatch) return publicMatch[1];
+    // Last resort: first class
+    return classBlocks[0][1];
+  }
+  return null;
 }
 
-// Rename the main class declaration in the source code.
-// Handles both "public class Foo" and plain "class Foo" declarations.
-function renamePublicClass(source, newName) {
-  // Try public class first
-  if (/public\s+class\s+\w+/.test(source)) {
-    return source.replace(/(public\s+class\s+)\w+/, `$1${newName}`);
-  }
-  // Fall back to any top-level class declaration
-  return source.replace(/((?:^|\n)\s*(?:abstract\s+)?class\s+)\w+/, `$1${newName}`);
+// Rename the class that contains the main method (or the public class) in the source code.
+function renameMainClass(source, newName) {
+  const mainClassName = extractClassName(source);
+  if (!mainClassName) return source;
+  // Replace the class declaration for the identified main class
+  const regex = new RegExp(`((?:public\\s+)?class\\s+)${mainClassName}\\b`);
+  return source.replace(regex, `$1${newName}`);
 }
 
 function VideoGeneration() {
   const [code, setCode] = useState(DEFAULT_CODE);
   const [fileName, setFileName] = useState("Main.java");
+  // When true, the user has manually edited the filename — auto-detection is paused
+  const [fileNameManual, setFileNameManual] = useState(false);
   const [quality, setQuality] = useState("low");
   const [output, setOutput] = useState("");
   const [isRunning, setIsRunning] = useState(false);
@@ -83,8 +98,8 @@ function VideoGeneration() {
 
       const response = await API.post("/submit-code", {
         user_id: "demo_user",
-        // The backend always compiles as Main.java, so rename the public class to Main
-        code: renamePublicClass(code, "Main"),
+        // The backend auto-detects the main class and uses it as the filename
+        code: code,
         submission_type: "run",
         problem_id: "video_gen_run",
         problem_title: "Video Generation",
@@ -240,14 +255,15 @@ function VideoGeneration() {
                 onChange={(e) => {
                   const newFileName = e.target.value;
                   setFileName(newFileName);
+                  setFileNameManual(true);
                   setRunSuccess(false);
 
-                  // Sync the public class name with the filename
+                  // Rename the main class in code to match the user-specified filename
                   const baseName = newFileName.replace(/\.java$/i, "");
                   if (baseName && /^\w+$/.test(baseName)) {
                     const currentClass = extractClassName(code);
                     if (currentClass && currentClass !== baseName) {
-                      setCode(renamePublicClass(code, baseName));
+                      setCode(renameMainClass(code, baseName));
                     }
                   }
                 }}
@@ -280,12 +296,15 @@ function VideoGeneration() {
                 setCode(val);
                 setRunSuccess(false);
 
-                // Sync filename with the public class name in code
-                const className = extractClassName(val);
-                if (className) {
-                  const expectedFile = `${className}.java`;
-                  if (expectedFile !== fileName) {
-                    setFileName(expectedFile);
+                // Auto-sync filename with the main class name in code
+                // (only when the user hasn't manually overridden the filename)
+                if (!fileNameManual) {
+                  const className = extractClassName(val);
+                  if (className) {
+                    const expectedFile = `${className}.java`;
+                    if (expectedFile !== fileName) {
+                      setFileName(expectedFile);
+                    }
                   }
                 }
               }}

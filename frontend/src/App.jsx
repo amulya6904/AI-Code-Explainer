@@ -45,13 +45,14 @@ function App() {
             setSelectedProblemId={setSelectedProblemId}
           />
         )}
-        {activePage === "Practice" && (
+        {/* Practice stays mounted to preserve state; resets via useEffect when problem changes */}
+        <div style={{ display: activePage === "Practice" ? "block" : "none" }}>
           <Practice
             attempts={attempts}
             setAttempts={setAttempts}
             selectedProblemId={selectedProblemId}
           />
-        )}
+        </div>
         {activePage === "Progress" && (
           <Progress
             setActivePage={setActivePage}

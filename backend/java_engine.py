@@ -58,6 +58,41 @@ _CLASS_NAME_RE = re.compile(
     re.MULTILINE,
 )
 
+# Regex to find the class that contains public static void main
+_MAIN_METHOD_RE = re.compile(
+    r'public\s+static\s+void\s+main\s*\(\s*String',
+    re.MULTILINE,
+)
+
+
+def _detect_main_class(code: str) -> str:
+    """
+    Detect the class containing ``public static void main(String[] args)``.
+
+    When multiple classes exist in the source, the one housing the main
+    method determines the filename.  Falls back to the first ``public class``,
+    then the first class declaration, then the constant ``MAIN_CLASS``.
+    """
+    class_decls = list(re.finditer(r'(?:public\s+)?class\s+(\w+)\s*\{', code))
+    if not class_decls:
+        return MAIN_CLASS
+
+    # Check each class region for the main method
+    for i, match in enumerate(class_decls):
+        start = match.start()
+        end = class_decls[i + 1].start() if i + 1 < len(class_decls) else len(code)
+        region = code[start:end]
+        if _MAIN_METHOD_RE.search(region):
+            return match.group(1)
+
+    # No main method found — prefer the public class
+    public_match = re.search(r'public\s+class\s+(\w+)', code)
+    if public_match:
+        return public_match.group(1)
+
+    # Last resort: first class
+    return class_decls[0].group(1)
+
 
 # ---------------------------------------------------------------------------
 # Internal data containers
@@ -361,8 +396,7 @@ def execute_java_code(code: str) -> dict:
         #    This makes the engine resilient to callers that forget to rename
         #    the class to "Main".
         # ------------------------------------------------------------------
-        class_match = _CLASS_NAME_RE.search(code)
-        class_name = class_match.group(1) if class_match else MAIN_CLASS
+        class_name = _detect_main_class(code)
         source_file = f"{class_name}.java"
 
         # ------------------------------------------------------------------
