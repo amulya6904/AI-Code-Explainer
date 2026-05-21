@@ -65,7 +65,10 @@ function App() {
             setSelectedProblemId={setSelectedProblemId}
           />
         )}
-        {activePage === "Video Gen" && <VideoGeneration />}
+        {/* Video Gen stays mounted to preserve state (code, output, video) */}
+        <div style={{ display: activePage === "Video Gen" ? "block" : "none" }}>
+          <VideoGeneration />
+        </div>
       </main>
     </div>
   );
