@@ -7,7 +7,7 @@ Project Title   : Adaptive AI-Based Java Programming Tutor
 Component       : Backend Server (REST API)
 Framework       : Flask (Python 3.10+)
 Database        : MongoDB (Atlas / Local)
-LLM Integration : Qwen Coder 30B via LM Studio (OpenAI-compatible API)
+LLM Integration : Qwen3 Coder 480B-A35B via RouteLLM API (OpenAI-compatible)
 Last Updated    : May 2026
 
 ================================================================================
@@ -25,7 +25,7 @@ feedback that adapts to each student's learning trajectory.
 The backend is implemented as a stateless Flask REST API that communicates with:
   - A React/Vite frontend via JSON over HTTP
   - A MongoDB database for persistence and analytics
-  - A locally-hosted LLM (Qwen Coder 30B) via an OpenAI-compatible endpoint
+  - An open-source LLM (qwen/qwen3-coder-480b-a35b-instruct) via RouteLLM API
 
 Key design principles:
   (a) Never provide full solutions — guide students toward understanding
@@ -49,9 +49,9 @@ Key design principles:
                                        | HTTP (OpenAI-compatible)
                                        v
                               +-------------------+
-                              |    LM Studio      |
-                              |  (Qwen Coder 30B) |
-                              |   Port 1234       |
+                              |    RouteLLM API   |
+                              | (Qwen3 Coder 480B |
+                              |  -A35B-Instruct)  |
                               +-------------------+
 
 2.2 Internal Module Architecture
@@ -187,12 +187,13 @@ Error Parsing:
 
 3.4 llm.py — LLM Integration Layer
 -------------------------------------
-Purpose: Interface with a locally-hosted Large Language Model (Qwen Coder 30B)
-to generate structured, progressive hints for student code errors.
+Purpose: Interface with an open-source Large Language Model
+(qwen/qwen3-coder-480b-a35b-instruct) via the RouteLLM API to generate
+structured, progressive hints for student code errors.
 
 Model Configuration:
-  - Endpoint: LM Studio local server (OpenAI-compatible chat completions)
-  - Model: Qwen Coder 30B (configurable via LLM_MODEL env var)
+  - Endpoint: RouteLLM API (OpenAI-compatible chat completions)
+  - Model: qwen/qwen3-coder-480b-a35b-instruct (configurable via LLM_MODEL)
   - Temperature: 0.3 (low for consistent, focused responses)
   - Max tokens: 1200
   - Timeout: 30 seconds (configurable)
@@ -770,13 +771,14 @@ Schema:
 
 6.1 Model Selection and Rationale
 -----------------------------------
-The system uses Qwen Coder 30B, a code-specialised large language model,
-hosted locally via LM Studio. This choice provides:
+The system uses qwen/qwen3-coder-480b-a35b-instruct, an open-source
+code-specialised large language model, accessed via the RouteLLM API.
+This choice provides:
   - Strong code understanding and error analysis capabilities
-  - No external API dependency (runs entirely on local hardware)
-  - Low latency (~12 seconds average per hint generation)
+  - Access to a large-scale model (480B total, 35B active parameters)
+  - Low latency via RouteLLM's optimised inference infrastructure
   - Full control over model behaviour via prompt engineering
-  - No data privacy concerns (student code never leaves the local network)
+  - Open-source model with transparent capabilities and limitations
 
 6.2 Prompt Engineering Strategy
 ---------------------------------
@@ -950,10 +952,10 @@ FLASK_ENV         | development                  | "development" or "production"
 FLASK_PORT        | 5000                         | Server port
 MONGO_URI         | (from .env)                  | MongoDB connection string
 LLM_ENABLED       | false                        | Enable LLM hint generation
-LLM_BASE_URL      | http://localhost:1234/v1      | LM Studio endpoint
-LLM_MODEL         | qwen-coder-30b               | Model identifier
+LLM_BASE_URL      | (from .env)                  | RouteLLM API endpoint
+LLM_MODEL         | qwen/qwen3-coder-480b-a35b-instruct | Model identifier
 LLM_TIMEOUT       | 30                           | LLM request timeout (seconds)
-ROUTELLM_API_KEY  | (empty)                      | API key for authenticated endpoints
+ROUTELLM_API_KEY  | (from .env)                  | RouteLLM API key for authentication
 
 9.2 Prerequisites
 -------------------
@@ -962,7 +964,7 @@ Requirement    | Minimum Version | Notes
 Python         | 3.10+           | Tested on 3.13
 Java JDK       | 11+             | javac and java must be on PATH
 MongoDB        | 6.0+            | Local or Atlas cloud
-LM Studio      | Any             | Required only when LLM_ENABLED=true
+RouteLLM API   | —               | API key required when LLM_ENABLED=true
 Node.js        | 18+             | For frontend only
 
 9.3 Python Dependencies
@@ -989,10 +991,10 @@ Node.js        | 18+             | For frontend only
   - Total: 162+ automated unit tests (all mocked, no external deps)
 
 10.2 Integration Tests
-  - live_llm_test.py: 5 scenarios against real LM Studio instance
+  - live_llm_test.py: 5 scenarios against real RouteLLM API
     (CompilationError, ArithmeticException, NullPointerException,
      Timeout, ArrayIndexOutOfBoundsException)
-  - Average response time: ~12 seconds per hint with Qwen Coder 30B
+  - Average response time: ~12 seconds per hint with Qwen3 Coder 480B
 
 10.3 Evaluation Scripts (in /evaluation directory)
   - hallucination_guard_eval.py : Measures guard accuracy
@@ -1010,10 +1012,11 @@ Node.js        | 18+             | For frontend only
   - Blueprint system provides clean route organisation
   - Sufficient for the synchronous request-response pattern used
 
-11.2 Why Local LLM (not Cloud API)?
-  - Student code privacy: no data leaves the local network
-  - No API costs or rate limits during development/evaluation
+11.2 Why Open-Source LLM via RouteLLM (not Proprietary Cloud API)?
+  - Open-source model ensures transparency and reproducibility
+  - RouteLLM provides optimised inference without self-hosting overhead
   - Full control over model selection and prompt tuning
+  - Cost-effective compared to proprietary API providers
   - Reproducible results for academic evaluation
 
 11.3 Why MongoDB (not SQL)?
