@@ -52,6 +52,12 @@ EXECUTE_TIMEOUT:  int = 5    # seconds – kills infinite loops / blocking stdin
 MAIN_CLASS:       str = "Main"
 SOURCE_FILE:      str = f"{MAIN_CLASS}.java"
 
+# Regex to extract the class name containing the main method
+_CLASS_NAME_RE = re.compile(
+    r'(?:public\s+)?class\s+(\w+)',
+    re.MULTILINE,
+)
+
 
 # ---------------------------------------------------------------------------
 # Internal data containers
@@ -78,9 +84,9 @@ class _RunResult:
 # Regex helpers
 # ---------------------------------------------------------------------------
 
-# javac reports errors as:  Main.java:<line>: error: <message>
+# javac reports errors as:  FileName.java:<line>: error: <message>
 _JAVAC_LINE_RE = re.compile(
-    r"\bMain\.java:(\d+):",
+    r"\b\w+\.java:(\d+):",
     re.MULTILINE,
 )
 
@@ -96,10 +102,11 @@ _RUNTIME_EXC_RE = re.compile(
     re.MULTILINE,
 )
 
-# Stack frame referencing a line inside Main.java:
+# Stack frame referencing a line inside the source file:
 #   at Main.someMethod(Main.java:42)
+#   at Test.someMethod(Test.java:42)
 _RUNTIME_LINE_RE = re.compile(
-    r"\bat\s+Main\.\w+\(Main\.java:(\d+)\)",
+    r"\bat\s+\w+\.\w+\(\w+\.java:(\d+)\)",
     re.MULTILINE,
 )
 
@@ -249,9 +256,9 @@ def _compile(source_path: str, sandbox: str) -> _CompileResult:
 # Execution layer
 # ---------------------------------------------------------------------------
 
-def _run(sandbox: str) -> _RunResult:
+def _run(sandbox: str, class_name: str = MAIN_CLASS) -> _RunResult:
     """
-    Execute the compiled ``Main`` class inside *sandbox*.
+    Execute the compiled class inside *sandbox*.
 
     Security constraints applied here
     ----------------------------------
@@ -279,7 +286,7 @@ def _run(sandbox: str) -> _RunResult:
         popen_kwargs["start_new_session"] = True
 
     process = subprocess.Popen(
-        ["java", "-cp", sandbox, MAIN_CLASS],
+        ["java", "-cp", sandbox, class_name],
         **popen_kwargs,
     )
 
@@ -350,9 +357,18 @@ def execute_java_code(code: str) -> dict:
 
     try:
         # ------------------------------------------------------------------
+        # 0. Detect the actual class name from the source code
+        #    This makes the engine resilient to callers that forget to rename
+        #    the class to "Main".
+        # ------------------------------------------------------------------
+        class_match = _CLASS_NAME_RE.search(code)
+        class_name = class_match.group(1) if class_match else MAIN_CLASS
+        source_file = f"{class_name}.java"
+
+        # ------------------------------------------------------------------
         # 1. Write source file into the isolated sandbox
         # ------------------------------------------------------------------
-        source_path = os.path.join(sandbox, SOURCE_FILE)
+        source_path = os.path.join(sandbox, source_file)
         with open(source_path, "w", encoding="utf-8") as fh:
             fh.write(code)
 
@@ -378,7 +394,7 @@ def execute_java_code(code: str) -> dict:
         # ------------------------------------------------------------------
         # 3. Execute  (only reached after a clean compile)
         # ------------------------------------------------------------------
-        run_result = _run(sandbox)
+        run_result = _run(sandbox, class_name)
 
         if run_result.timed_out:
             return {

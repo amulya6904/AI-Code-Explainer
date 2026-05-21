@@ -23,15 +23,25 @@ const QUALITY_OPTIONS = [
   { value: "production", label: "Production (1440p)" },
 ];
 
-// Extract the public class name from Java source code
-function extractPublicClassName(source) {
-  const match = source.match(/public\s+class\s+(\w+)/);
-  return match ? match[1] : null;
+// Extract the main class name from Java source code.
+// Tries "public class Foo" first, then falls back to any top-level "class Foo".
+function extractClassName(source) {
+  const publicMatch = source.match(/public\s+class\s+(\w+)/);
+  if (publicMatch) return publicMatch[1];
+  // Match "class Foo" that isn't inside a string or comment (simple heuristic)
+  const classMatch = source.match(/(?:^|\n)\s*(?:abstract\s+)?class\s+(\w+)/);
+  return classMatch ? classMatch[1] : null;
 }
 
-// Rename the public class in the source code
+// Rename the main class declaration in the source code.
+// Handles both "public class Foo" and plain "class Foo" declarations.
 function renamePublicClass(source, newName) {
-  return source.replace(/(public\s+class\s+)\w+/, `$1${newName}`);
+  // Try public class first
+  if (/public\s+class\s+\w+/.test(source)) {
+    return source.replace(/(public\s+class\s+)\w+/, `$1${newName}`);
+  }
+  // Fall back to any top-level class declaration
+  return source.replace(/((?:^|\n)\s*(?:abstract\s+)?class\s+)\w+/, `$1${newName}`);
 }
 
 function VideoGeneration() {
@@ -235,7 +245,7 @@ function VideoGeneration() {
                   // Sync the public class name with the filename
                   const baseName = newFileName.replace(/\.java$/i, "");
                   if (baseName && /^\w+$/.test(baseName)) {
-                    const currentClass = extractPublicClassName(code);
+                    const currentClass = extractClassName(code);
                     if (currentClass && currentClass !== baseName) {
                       setCode(renamePublicClass(code, baseName));
                     }
@@ -271,7 +281,7 @@ function VideoGeneration() {
                 setRunSuccess(false);
 
                 // Sync filename with the public class name in code
-                const className = extractPublicClassName(val);
+                const className = extractClassName(val);
                 if (className) {
                   const expectedFile = `${className}.java`;
                   if (expectedFile !== fileName) {
